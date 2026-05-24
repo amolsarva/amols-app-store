@@ -1,61 +1,73 @@
 # github-autopush
 
-Automatically keep your git repos synced to GitHub in the background — a LaunchAgent-powered auto-push system with an interactive manager UI.
+Auto-discovers local GitHub working copies and keeps them synced in the background.
 
-## What it does
+The design goal is: put a GitHub repo somewhere under the configured roots and stop thinking about it. The runner scans each cycle, finds repos with GitHub `origin` remotes, skips anything explicitly ignored, pulls/rebases with autostash, commits local changes, and pushes.
 
-Two scripts work together:
+## Files
 
-**`github-autopush-manager.sh`** — interactive terminal UI that:
-- Discovers all git repos under your configured search folders
-- Lets you toggle auto-sync on/off per repo
-- Installs/uninstalls the background LaunchAgent
-- Shows sync history and last-run status
-- Adjustable sync interval (default: every 5 minutes)
+- `github-autopush-manager.sh` - local terminal TUI for status, roots, ignored repos, settings, manual runs, and LaunchAgent control.
+- `github-autopush-runner.sh` - non-interactive worker used by launchd.
 
-**`github-autopush-runner.sh`** — the background worker that:
-- Runs on a schedule via macOS LaunchAgent
-- For each enabled repo: `git add -A`, `git commit`, `git push`
-- Skips repos with no changes
-- Logs everything to `~/.config/github-autopush/history.tsv`
-
-## Usage
+## Quick start
 
 ```bash
-# Launch the manager (interactive)
 bash github-autopush-manager.sh
 ```
 
-From the manager menu you can:
-- See all discovered repos and their sync status
-- Enable/disable auto-push per repo
-- Start/stop the background agent
-- View recent sync history
-- Configure the sync interval and search roots
+Useful non-interactive commands:
 
-## Setup
+```bash
+bash github-autopush-manager.sh install   # install/restart persistent agent
+bash github-autopush-manager.sh once      # run one sync cycle now
+bash github-autopush-manager.sh scan      # show discovered GitHub repos
+bash github-autopush-manager.sh stop      # stop the persistent agent
+```
 
-1. Make sure your repos already have a GitHub remote set (`git remote -v` to check)
-2. Make sure you can push without a password prompt (SSH key or credential helper)
-3. Run the manager and enable sync for the repos you want
+## Behavior
 
-The LaunchAgent (`com.amol.github-autopush`) will install to `~/Library/LaunchAgents/` and auto-start at login.
+- Discovers Git repos under `search_roots.txt` every run. The default roots are the local and iCloud `Documents/root` folders.
+- Only manages repos whose `origin` is GitHub.
+- New GitHub repos are managed automatically.
+- `ignore.txt` is the main control: ignored paths are skipped.
+- Existing `sync_enabled.txt` is still read as a legacy hint, but it is no longer required.
+- Converts `https://github.com/...` origins to `git@github.com:...` when enabled.
+- Pulls with `git pull --rebase --autostash` before committing and pushing.
+- Commits all local changes with `auto: sync YYYY-MM-DD HH:MM:SS`.
+- Pushes and sets upstream automatically when a branch has no upstream.
+- Never force-pushes.
+- Skips detached heads and repos with merge/rebase/cherry-pick state in progress.
 
-## Configuration
+## Config
 
-Config lives at `~/.config/github-autopush/`:
-- `search_roots.txt` — directories to search for git repos (one per line)
-- `sync_enabled.txt` — repos that have auto-push enabled
-- `history.tsv` — full sync log
+Config lives in `~/.config/github-autopush/`:
 
-## Requirements
+- `config` - interval and behavior toggles.
+- `search_roots.txt` - directories to scan.
+- `ignore.txt` - exact repo paths or path fragments to skip.
+- `last_scan.txt` - latest discovered GitHub repo list.
+- `history.tsv` - append-only sync log.
+- `last_run_summary.txt` - dashboard summary.
 
-- macOS
-- `git` with GitHub access (SSH key recommended)
-- bash 3.2+
+Main settings:
+
+- `INTERVAL` - LaunchAgent interval in seconds, default `300`.
+- `SEARCH_MAX_DEPTH` - discovery depth per search root, default `8`.
+- `PULL_BEFORE_PUSH` - `1` to rebase/autostash before committing and pushing.
+- `AUTO_CONVERT_HTTPS` - `1` to convert GitHub HTTPS origins to SSH.
+- `AUTO_CREATE_UPSTREAM` - `1` to push `-u origin <branch>` when needed.
+- `COMMIT_PREFIX` - auto commit message prefix.
+
+## Persistent runner
+
+The manager installs:
+
+- Runner copy: `~/bin/github-autopush-runner.sh`
+- LaunchAgent: `~/Library/LaunchAgents/com.amol.github-autopush.plist`
+- Logs: `~/Library/Logs/github-autopush.out` and `~/Library/Logs/github-autopush.err`
+
+The agent starts at login and runs at the configured interval.
 
 ## Notes
 
-- Only pushes — never force-pushes, never rebases, never pulls
-- If a push fails (e.g. remote has new commits), the repo is skipped and logged
-- Designed for personal repos where you're the sole committer
+This is intentionally aggressive for personal/local mirrors. It stages everything in managed repos. Put repos in `ignore.txt` if they should not be auto-committed and pushed.

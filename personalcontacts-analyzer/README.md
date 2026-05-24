@@ -30,7 +30,7 @@ python3 pca.py scan --account you@gmail.com --since 2000-01-01
 # Export to CSV
 python3 pca.py export-csv
 
-# Build the HTML report
+# Build the normal and PVT-masked HTML reports
 python3 pca.py report
 ```
 
@@ -68,9 +68,25 @@ Requires Python 3.8+. No external API calls — everything stays local.
 
 ## Data locations
 
+By default, the tool writes to the sibling data folder:
+
+```text
+../../personalcontactsanalyzerDATA/data/
+```
+
+That path is resolved relative to this script folder, so moving `mac-scripts` and
+`personalcontactsanalyzerDATA` together to a new computer keeps the app working.
+If the folder is missing, commands that need local data prompt for the correct
+`personalcontactsanalyzerDATA` location. You can also set it directly:
+
+```bash
+export PCA_DATA_HOME="/path/to/personalcontactsanalyzerDATA"
+```
+
 | File | Path |
 |------|------|
-| SQLite database | `data/mail_headers.sqlite` |
-| CSV export | `data/exports/mail_headers.csv` |
-| Analysis outputs | `data/analysis/` |
-| HTML report | `data/report/contact_insights_report.html` |
+| SQLite database | `personalcontactsanalyzerDATA/data/mail_headers.sqlite` |
+| CSV export | `personalcontactsanalyzerDATA/data/exports/mail_headers.csv` |
+| Analysis outputs | `personalcontactsanalyzerDATA/data/analysis/` |
+| HTML report | `personalcontactsanalyzerDATA/data/report/contact_insights_report.html` |
+| PVT masked HTML report | `personalcontactsanalyzerDATA/data/report/contact_insights_report_PVT.html` |

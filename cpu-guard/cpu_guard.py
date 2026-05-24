@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-import psutil, time, datetime, subprocess, re
+import datetime
+import os
+import re
+import subprocess
+import time
+
+import psutil
 
 WATCH = [
     "contactsd",
@@ -24,22 +30,45 @@ WATCH = [
 CPU_LIMIT = 80.0      # percent
 DURATION = 30         # seconds above limit before flag
 INTERVAL = 5          # seconds between checks
-NOTIFY = True         # macOS notification toggle
+NOTIFY = os.environ.get("CPU_GUARD_NOTIFY", "1").lower() not in ("0", "false", "no")
 
 # Never touch or even flag anything matching these
 SKIP_SUBSTR = re.compile(r"(claude|openai|openclaw)", re.IGNORECASE)
 
+PROCESS_NOTES = {
+    "IntelligencePlatformComputeService": "Apple Intelligence / on-device ML",
+    "intelligenceservice": "Apple Intelligence",
+    "knowledge-agent": "Spotlight/Siri knowledge indexing",
+    "corespotlightd": "Spotlight indexing",
+    "mds": "Spotlight indexing",
+    "mdworker": "Spotlight indexing worker",
+    "mdworker_shared": "Spotlight indexing worker",
+    "photolibraryd": "Photos library background work",
+    "photosanalysisd": "Photos face/object analysis",
+    "bird": "iCloud Drive sync",
+    "cloudd": "iCloud sync",
+    "contactsd": "Contacts sync",
+    "calendard": "Calendar sync",
+}
+
 offense = {}
 flagged_recently = {}     # pid -> last flag time (epoch)
-FLAG_COOLDOWN = 120       # seconds between repeat alerts per PID
+FLAG_COOLDOWN = 900       # seconds between repeat alerts per PID
 
-def notify(title: str, message: str):
+def apple_quote(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
+def notify(title: str, subtitle: str, message: str):
     if not NOTIFY:
         return
     try:
+        script = (
+            f'display notification "{apple_quote(message)}" '
+            f'with title "{apple_quote(title)}" '
+            f'subtitle "{apple_quote(subtitle)}"'
+        )
         subprocess.run([
-            "osascript", "-e",
-            f'display notification "{message}" with title "{title}"'
+            "osascript", "-e", script
         ], check=False)
     except Exception:
         pass
@@ -71,9 +100,15 @@ while True:
                     now = time.time()
                     last = flagged_recently.get(pid, 0)
                     if now - last >= FLAG_COOLDOWN:
-                        msg = f"{name} (PID {pid}) sustained ~{cpu:.1f}% CPU"
-                        print(f"[{now_str}] FLAG: {msg}", flush=True)
-                        notify("CPU Guard (Safe)", msg)
+                        note = PROCESS_NOTES.get(name, "watched macOS background process")
+                        msg = (
+                            f"{note}: {name} (PID {pid}) has stayed above "
+                            f"{CPU_LIMIT:.0f}% CPU for about {DURATION}s. "
+                            "CPU Guard only reports this; it does not kill or change the process."
+                        )
+                        subtitle = f"{name} at ~{cpu:.1f}% CPU"
+                        print(f"[{now_str}] FLAG: {subtitle} — {note}", flush=True)
+                        notify("CPU Guard: high CPU", subtitle, msg)
                         flagged_recently[pid] = now
                     offense[pid] = 0
             else:

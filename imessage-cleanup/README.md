@@ -26,6 +26,8 @@ Extract all your iMessage photo and video attachments into organized folders by 
    **(v2.2)** Per-contact exports live OUTSIDE the script's folder, in a backup root you choose. Default: `~/Documents/root/imessage-backups`. The choice is remembered across runs in `~/.config/imessage_cleanup/config`. When you enter menu `[8]` you'll get a small navigator with options to: use the remembered location, use the default, use Documents or Desktop, type a custom absolute path, browse subfolders, or create a new subfolder.
    **(v2.5)** If the backup root already contains per-contact exports, menu `[8]` lists those previous people first and asks whether to refresh all or selected ones before you browse the full roster.
    **(v2.6)** Manually grouped identities are supported with `export_format=grouped_contact_v1` in `.export_status`. A grouped folder stores multiple handle ROWIDs in one archive and future refreshes update that same folder instead of splitting the person back into separate phone/email exports.
+   **(v2.7)** The backup root now has a state store at `.archive_state/`. It keeps `export_history.jsonl` and `contact_aliases.json`, and asks whether to update existing archive folders in place.
+   **(v2.7.1)** Archive repo folders with `messages_master.jsonl` get a dated run-log file named `YYYY-MM-DD to YYYY-MM-DD.TXT`; the script renames that file as the archive's message date range changes.
 5. Optionally deletes local attachment copies so iCloud reclaims the space
 
 ## Usage
@@ -48,9 +50,21 @@ An interactive menu lets you configure everything before anything is touched:
 
 When you press `[8]` the script first asks where you want exports written. The default is `~/Documents/root/imessage-backups`, but you can pick any folder (or create a new one) via the built-in navigator. Your choice is saved to `~/.config/imessage_cleanup/config` so next time you'll just confirm.
 
-If that backup root already contains prior per-contact exports, the script reads each contact folder's `.export_status`, lists those people, and asks whether to refresh them now. Press Enter or type `a` to refresh all, type comma-separated numbers to refresh selected previous exports, or type `s` to skip and browse normally. A refresh uses the current `chat.db` roster and the restartable export path, so it updates the DB/transcript and only copies attachments not already recorded in `attachments_manifest.tsv`.
+If that backup root already contains prior per-contact exports, the script reads each contact folder's `.export_status`, lists those people, and asks whether to update existing archive folders in place. Press Enter or type `r` to refresh the listed archive folders directly. Type `a` to do a full refresh of all listed contacts, type comma-separated numbers to full-refresh selected previous exports, or type `s` to skip and browse normally.
 
 Grouped exports use the same refresh screen. If a folder's `.export_status` has `export_format=grouped_contact_v1`, the script refreshes the stored combined `handle_rowids` into that exact folder. This is for one real person who appears as several phone/email handles that Contacts did not merge automatically.
+
+When you select multiple roster rows manually, the script asks whether those handles should be combined into one named person. If you answer yes and enter a name, it writes one grouped archive folder, records the grouping in `.archive_state/contact_aliases.json`, and future refreshes keep the handles together.
+
+The state store is append-only for history:
+
+```
+<BACKUP_ROOT>/.archive_state/
+  contact_aliases.json
+  export_history.jsonl
+```
+
+Each completed per-contact export appends a JSON line with the contact name, handles, handle ROWIDs, output folder, export mode, message count, and last-message cursor. Any archive repo folder under the backup root that contains `messages_master.jsonl` also gets a readable dated run log, for example `2026-01-12 to 2026-05-19.TXT`.
 
 The roster screen then lists every handle that has at least one message, sorted by most-recent activity. Each row shows:
 
@@ -87,6 +101,7 @@ At the prompt you can type:
 - Never modifies the original `chat.db`
 - Per-contact export writes to a separate `<BACKUP_ROOT>/<slug>/` tree, so it never collides with the sender-grouped attachment dump
 - Per-contact exports are restartable — rerunning the same contact repairs partial folders, rewrites DB/transcript atomically, and skips attachments already recorded in `attachments_manifest.tsv`
+- Per-contact exports keep a history ledger and cursor in `.archive_state/`, so updates know where the last archive stopped
 - The TUI uses a high-contrast text palette intended to stay readable on both white and black terminal backgrounds
 
 ## Requirements
@@ -104,6 +119,8 @@ At the prompt you can type:
 
 ## Changelog
 
+- **v2.7.1** — Stopped writing timestamped zip files for previous-export updates. The refresh path now updates existing archive folders in place, and archive repo folders with `messages_master.jsonl` maintain a readable `YYYY-MM-DD to YYYY-MM-DD.TXT` run-log file whose name follows the actual message date range.
+- **v2.7.0** — Added `.archive_state/export_history.jsonl`, `.archive_state/contact_aliases.json`, previous-export updates, and a prompt to combine multiple selected handles into one named grouped person.
 - **v2.6.0** — Added grouped previous-export support. A folder can declare `export_format=grouped_contact_v1` in `.export_status`; menu `[8]` then refreshes the stored combined handle list into that same folder. This keeps manually merged identities, such as one person spread across multiple phones/email, together on future updates.
 - **v2.5.0** — Added memory for previous per-contact exports. Menu `[8]` now scans `.export_status` files in the selected backup root, lists previously exported people, and asks whether to refresh all or selected prior exports before opening the full roster. Also changed the TUI to a high-contrast palette that avoids green/cyan/dim text for core menu labels so it remains readable on light and dark terminal themes.
 - **v2.4.0** — Robustness/refactor pass for menu `[8]`: removed Bash associative arrays so the roster merge works on macOS Bash 3.2, improved the roster label/UI for merged and unsaved contacts, validates handle ID lists before SQL interpolation, writes DB/transcript files atomically, keeps a per-contact `attachments_manifest.tsv`, leaves `.export_status` and `export_errors.log` in each contact folder, and lets reruns resume/repair partial exports without duplicating already-copied attachments.

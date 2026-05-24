@@ -8,7 +8,9 @@ Installs a macOS LaunchAgent that watches `~/Desktop` for changes. Whenever a ne
 
 If iCloud Desktop sync is enabled, `~/Desktop/Screenshots/` syncs to iCloud just like the rest of your Desktop — so nothing is lost.
 
-A second LaunchAgent (`com.amol.screenshot-clipboard`) ensures macOS always copies screenshots to your clipboard so you can paste immediately after taking one.
+A second LaunchAgent (`com.amol.screenshot-clipboard`) keeps macOS pointed at
+`~/Desktop/Screenshots` as the screenshot save location and ensures screenshots
+are copied to your clipboard so you can paste immediately after taking one.
 
 Everything is logged to `~/Library/Logs/screenshot-tidy.log`.
 

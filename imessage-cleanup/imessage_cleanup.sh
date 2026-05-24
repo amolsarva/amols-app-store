@@ -1,7 +1,7 @@
 #!/bin/bash
 # =============================================================================
 #  iMessage Attachment Extractor & iCloud Storage Cleaner
-#  Version: 2.6.0
+#  Version: 2.7.1
 #  macOS 12+ (Monterey, Ventura, Sonoma, Sequoia)
 #
 #  Run as:  sudo bash imessage_cleanup.sh
@@ -62,6 +62,22 @@
 #      manually grouped identities (e.g. one person with several phones/email)
 #      stay together on future updates.
 #
+#  v2.7.0 ARCHIVE HISTORY + RECENT DELTAS:
+#    - Per-contact exports now maintain <BACKUP_ROOT>/.archive_state with a
+#      JSONL history ledger and a contact aliases JSON file.
+#    - Previous export refresh asks whether to update only recent archive data.
+#    - Selecting multiple handles can now be saved as one named grouped person,
+#      so future refreshes keep those handles together.
+#
+#  v2.7.1 RUN LOG FILES:
+#    - Previous-export updates now refresh the existing archive folders in
+#      place instead of writing timestamped zip files.
+#    - Archive repo folders with messages_master.jsonl now get a dated
+#      "YYYY-MM-DD to YYYY-MM-DD.TXT" run-log file.
+#    - The script renames an existing placeholder or stale dated run-log file
+#      whenever the message date range changes, then rewrites it from the
+#      archive history ledger.
+#
 #  Safety:
 #    - Never modifies anything without explicit confirmation
 #    - Creates a full SQLite backup before any DB writes
@@ -94,7 +110,7 @@ WHT="$BOLD";       DIM=''
 BLINK='\033[5m';   ULINE='\033[4m'
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-SCRIPT_VERSION="2.6.0"
+SCRIPT_VERSION="2.7.1"
 SCRIPT_NAME="iMessage Attachment Extractor & iCloud Cleaner"
 
 # Paths – resolved relative to the real user's home (handles sudo)
@@ -1542,6 +1558,9 @@ show_options_menu() {
 # backup folder (default: ~/Documents/root/imessage-backups) rather than
 # alongside the sender-grouped attachment dump on the Desktop.
 PER_CONTACT_ROOT=""   # set by do_per_contact_export()
+CURRENT_EXPORT_SINCE_NS=""
+CURRENT_EXPORT_MODE="full"
+RUN_EXPORTED_DIRS=()
 
 # ── Config: persist the user's chosen backup root across runs ────────────────
 load_config() {
@@ -1551,6 +1570,7 @@ load_config() {
     fi
     # If still empty after sourcing, fall back to default.
     [[ -z "$BACKUP_ROOT" ]] && BACKUP_ROOT="$DEFAULT_BACKUP_ROOT"
+    return 0
 }
 
 save_config() {
@@ -1564,6 +1584,249 @@ save_config() {
 BACKUP_ROOT="$BACKUP_ROOT"
 EOF
     [[ -n "${SUDO_USER:-}" ]] && chown "$SUDO_USER" "$CONFIG_FILE" 2>/dev/null || true
+}
+
+archive_state_dir() {
+    printf '%s/.archive_state' "$PER_CONTACT_ROOT"
+}
+
+archive_history_log() {
+    printf '%s/export_history.jsonl' "$(archive_state_dir)"
+}
+
+archive_aliases_file() {
+    printf '%s/contact_aliases.json' "$(archive_state_dir)"
+}
+
+ensure_archive_state() {
+    [[ -z "$PER_CONTACT_ROOT" ]] && return 0
+    local state_dir aliases
+    state_dir=$(archive_state_dir)
+    aliases=$(archive_aliases_file)
+    mkdir -p "$state_dir" 2>/dev/null || true
+    touch "$(archive_history_log)" 2>/dev/null || true
+    if [[ ! -f "$aliases" ]]; then
+        cat > "$aliases" <<'JSON'
+{
+  "version": 1,
+  "people": {
+    "laura": {
+      "display_name": "Laura Bogaert",
+      "slug": "laura_bogaert",
+      "handles": [
+        "laura.bogaert@telenet.be",
+        "+32472817175",
+        "+447397821812"
+      ],
+      "notes": "Seeded because this person appears in Messages under three handles."
+    }
+  }
+}
+JSON
+    fi
+    if [[ -n "${SUDO_USER:-}" ]]; then
+        chown -R "$SUDO_USER" "$state_dir" 2>/dev/null || true
+    fi
+}
+
+imessage_ns_from_local_datetime() {
+    # imessage_ns_from_local_datetime "YYYY-mm-dd HH:MM:SS"
+    local local_dt="$1"
+    [[ -z "$local_dt" ]] && return 0
+    python3 - "$local_dt" <<'PY' 2>/dev/null
+import sys
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+try:
+    dt = datetime.strptime(sys.argv[1], "%Y-%m-%d %H:%M:%S").replace(tzinfo=ZoneInfo("Europe/Brussels"))
+    epoch = datetime(2001, 1, 1, tzinfo=timezone.utc)
+    print(int((dt.astimezone(timezone.utc) - epoch).total_seconds() * 1_000_000_000))
+except Exception:
+    pass
+PY
+}
+
+last_export_ns_from_dir() {
+    local dir="$1" status_file="$1/.export_status" meta="$1/metadata.json" ns dt
+    ns=$(status_value "$status_file" "last_message_ns")
+    if [[ "$ns" =~ ^[0-9]+$ ]]; then
+        printf '%s' "$ns"
+        return 0
+    fi
+    if [[ -f "$meta" ]]; then
+        dt=$(python3 - "$meta" <<'PY' 2>/dev/null
+import json, sys
+try:
+    with open(sys.argv[1], "r", encoding="utf-8") as f:
+        data = json.load(f)
+    print(data.get("last_message", ""))
+except Exception:
+    pass
+PY
+)
+        ns=$(imessage_ns_from_local_datetime "$dt")
+        [[ "$ns" =~ ^[0-9]+$ ]] && printf '%s' "$ns"
+    fi
+}
+
+append_archive_history() {
+    # append_archive_history <json object string>
+    ensure_archive_state
+    local history; history=$(archive_history_log)
+    printf '%s\n' "$1" >> "$history" 2>/dev/null || true
+    [[ -n "${SUDO_USER:-}" ]] && chown "$SUDO_USER" "$history" 2>/dev/null || true
+    sync_archive_repo_run_logs
+}
+
+record_export_history() {
+    # record_export_history <status> <name> <handles> <rowids> <outdir> <messages> <first> <last> <last_ns> <format> <mode> <since_ns>
+    local status="$1" name="$2" handles="$3" rowids="$4" outdir="$5" messages="$6" first="$7" last="$8" last_ns="$9" format="${10}" mode="${11}" since_ns="${12}"
+    local payload
+    payload=$(python3 - "$SCRIPT_VERSION" "$status" "$name" "$handles" "$rowids" "$outdir" "$messages" "$first" "$last" "$last_ns" "$format" "$mode" "$since_ns" <<'PY'
+import json, sys
+from datetime import datetime
+keys = ["script_version","status","contact_name","handles","handle_rowids","outdir","message_count","first_message","last_message","last_message_ns","export_format","mode","since_ns"]
+data = dict(zip(keys, sys.argv[1:]))
+data["event"] = "per_contact_export"
+data["recorded_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+for key in ("message_count", "last_message_ns", "since_ns"):
+    if data.get(key, "").isdigit():
+        data[key] = int(data[key])
+    elif key == "since_ns" and not data.get(key):
+        data[key] = None
+print(json.dumps(data, ensure_ascii=False))
+PY
+)
+    append_archive_history "$payload"
+}
+
+repo_message_range() {
+    # repo_message_range <repo_dir>  ->  "YYYY-MM-DD<TAB>YYYY-MM-DD<TAB>count"
+    local repo_dir="$1" messages="$1/messages_master.jsonl"
+    [[ -f "$messages" ]] || return 1
+    python3 - "$messages" <<'PY' 2>/dev/null
+import json, sys
+from pathlib import Path
+path = Path(sys.argv[1])
+first = last = None
+count = 0
+with path.open("r", encoding="utf-8") as f:
+    for line in f:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            dt = json.loads(line).get("created_at", "")
+        except Exception:
+            continue
+        if not dt:
+            continue
+        day = dt[:10]
+        first = day if first is None or day < first else first
+        last = day if last is None or day > last else last
+        count += 1
+if first and last:
+    print(f"{first}\t{last}\t{count}")
+PY
+}
+
+sync_one_archive_repo_run_log() {
+    # sync_one_archive_repo_run_log <repo_dir>
+    local repo_dir="$1" history="$BACKUP_ROOT/.archive_state/export_history.jsonl"
+    [[ -d "$repo_dir" ]] || return 0
+
+    local range start_date end_date msg_count desired existing base tmp
+    range=$(repo_message_range "$repo_dir") || return 0
+    IFS=$'\t' read -r start_date end_date msg_count <<< "$range"
+    [[ -n "$start_date" && -n "$end_date" ]] || return 0
+    desired="$repo_dir/$start_date to $end_date.TXT"
+
+    existing=""
+    local f
+    for f in "$repo_dir"/*.TXT "$repo_dir"/*.txt; do
+        [[ -e "$f" ]] || continue
+        base=$(basename "$f")
+        if [[ "$base" == "START DATE to END DATE.TXT" || "$base" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\ to\ [0-9]{4}-[0-9]{2}-[0-9]{2}\.TXT$ ]]; then
+            existing="$f"
+            break
+        fi
+    done
+
+    if [[ -n "$existing" && "$existing" != "$desired" ]]; then
+        if [[ -e "$desired" ]]; then
+            rm -f "$existing" 2>/dev/null || true
+        else
+            mv "$existing" "$desired" 2>/dev/null || true
+        fi
+    fi
+
+    tmp="$desired.tmp.$$"
+    python3 - "$repo_dir" "$history" "$start_date" "$end_date" "$msg_count" "$SCRIPT_VERSION" <<'PY' > "$tmp" 2>/dev/null || return 0
+import json, sys
+from datetime import datetime
+from pathlib import Path
+
+repo = Path(sys.argv[1])
+history = Path(sys.argv[2])
+start_date, end_date, msg_count, version = sys.argv[3:7]
+
+print("iMessage archive run log")
+print(f"Repo: {repo}")
+print(f"Message date range: {start_date} to {end_date}")
+print(f"Message count in messages_master.jsonl: {msg_count}")
+print(f"Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+print(f"Script version: {version}")
+print()
+print("Last script runs")
+
+if not history.exists() or history.stat().st_size == 0:
+    print("- No recorded runs yet.")
+    raise SystemExit
+
+rows = []
+with history.open("r", encoding="utf-8") as f:
+    for line in f:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            rows.append(json.loads(line))
+        except Exception:
+            rows.append({"event": "unparsed", "raw": line})
+
+for row in rows[-25:]:
+    event = row.get("event", "run")
+    recorded = row.get("recorded_at") or row.get("finished_at") or ""
+    status = row.get("status") or row.get("mode") or ""
+    contact = row.get("contact_name") or row.get("contact") or ""
+    first = row.get("first_message") or ""
+    last = row.get("last_message") or ""
+    count = row.get("message_count") or row.get("messages") or ""
+    out = row.get("outdir") or row.get("archive_zip") or ""
+    parts = [recorded, event]
+    if status:
+        parts.append(f"status={status}")
+    if contact:
+        parts.append(f"contact={contact}")
+    if count != "":
+        parts.append(f"messages={count}")
+    if first or last:
+        parts.append(f"range={first} to {last}")
+    if out:
+        parts.append(f"output={out}")
+    print("- " + " | ".join(str(p) for p in parts if p))
+PY
+    mv -f "$tmp" "$desired" 2>/dev/null || true
+    [[ -n "${SUDO_USER:-}" ]] && chown "$SUDO_USER" "$desired" 2>/dev/null || true
+}
+
+sync_archive_repo_run_logs() {
+    [[ -n "$BACKUP_ROOT" && -d "$BACKUP_ROOT" ]] || return 0
+    local repo
+    while IFS= read -r repo; do
+        sync_one_archive_repo_run_log "$repo"
+    done < <(find "$BACKUP_ROOT" -maxdepth 2 -type f -name "messages_master.jsonl" -print 2>/dev/null | sed 's#/messages_master.jsonl$##')
+    return 0
 }
 
 # ── Folder navigator: lets the user pick / type / create a backup folder ─────
@@ -2071,6 +2334,7 @@ PREV_EXPORT_ROWIDS=()
 PREV_EXPORT_STATUS=()
 PREV_EXPORT_FINISHED=()
 PREV_EXPORT_FORMAT=()
+PREV_EXPORT_LAST_NS=()
 
 status_value() {
     # status_value <file> <key>  →  value from key=value .export_status files.
@@ -2086,10 +2350,11 @@ scan_previous_exports() {
     PREV_EXPORT_STATUS=()
     PREV_EXPORT_FINISHED=()
     PREV_EXPORT_FORMAT=()
+    PREV_EXPORT_LAST_NS=()
 
     [[ -z "$PER_CONTACT_ROOT" || ! -d "$PER_CONTACT_ROOT" ]] && return 0
 
-    local status_file dir name handles ids status finished format meta
+    local status_file dir name handles ids status finished format meta last_ns
     while IFS= read -r status_file; do
         [[ -z "$status_file" ]] && continue
         dir=$(dirname "$status_file")
@@ -2099,6 +2364,7 @@ scan_previous_exports() {
         status=$(status_value "$status_file" "status")
         finished=$(status_value "$status_file" "finished_at")
         format=$(status_value "$status_file" "export_format")
+        last_ns=$(last_export_ns_from_dir "$dir")
 
         # Fallback for folders that only have metadata.json from an interrupted
         # run or a future-compatible export.
@@ -2154,6 +2420,7 @@ PY
         PREV_EXPORT_STATUS+=("$status")
         PREV_EXPORT_FINISHED+=("$finished")
         PREV_EXPORT_FORMAT+=("$format")
+        PREV_EXPORT_LAST_NS+=("$last_ns")
     done < <(find "$PER_CONTACT_ROOT" -mindepth 2 -maxdepth 2 -type f -name ".export_status" 2>/dev/null | sort)
 }
 
@@ -2192,7 +2459,7 @@ refresh_previous_exports_prompt() {
 
     while true; do
         banner
-        section "Want to refresh these previous exports?"
+        section "Update archives?"
         echo
         echo -e "  Found ${BOLD}$total_prev${RESET} prior per-contact export(s) in:"
         echo -e "  ${BOLD}$PER_CONTACT_ROOT${RESET}"
@@ -2213,20 +2480,65 @@ refresh_previous_exports_prompt() {
         done
         HR
         echo
-        echo -e "  ${BOLD}[Enter]${RESET}/${BOLD}a${RESET} refresh all listed contacts"
-        echo -e "  ${BOLD}1,3,5${RESET}     refresh selected contacts"
+        echo -e "  ${BOLD}[Enter]${RESET}/${BOLD}r${RESET} update existing archive folders in place"
+        echo -e "  ${BOLD}a${RESET}         full refresh all listed contacts"
+        echo -e "  ${BOLD}1,3,5${RESET}     full refresh selected contacts"
         echo -e "  ${BOLD}s${RESET}         skip and browse normally"
         echo
         printf "  Selection: "
         local choice
         read -r choice </dev/tty
-        choice="${choice:-a}"
+        choice="${choice:-r}"
 
         case "$choice" in
             s|S|0|q|Q)
                 return 0
                 ;;
+            r|R|recent|RECENT)
+                CURRENT_EXPORT_MODE="full"
+                RUN_EXPORTED_DIRS=()
+                local any_recent=false
+                local -a picks=()
+                for (( i=0; i<total_prev; i++ )); do
+                    local since_ns="${PREV_EXPORT_LAST_NS[$i]}"
+                    if [[ ! "$since_ns" =~ ^[0-9]+$ || "$since_ns" -eq 0 ]]; then
+                        warn "No valid cursor for ${PREV_EXPORT_NAMES[$i]}; doing a full in-place refresh."
+                    fi
+                    any_recent=true
+                    if [[ "${PREV_EXPORT_FORMAT[$i]}" == "grouped_contact_v1" ]]; then
+                        export_contact_id_list \
+                            "${PREV_EXPORT_ROWIDS[$i]}" \
+                            "${PREV_EXPORT_HANDLES[$i]}" \
+                            "${PREV_EXPORT_NAMES[$i]}" \
+                            "${PREV_EXPORT_DIRS[$i]}"
+                        continue
+                    fi
+                    local pick matched_any=false
+                    while IFS= read -r pick; do
+                        [[ -z "$pick" ]] && continue
+                        matched_any=true
+                        if append_unique_pick "$pick" "${picks[@]}"; then
+                            picks+=("$pick")
+                        fi
+                    done < <(find_roster_picks_by_ids "${PREV_EXPORT_ROWIDS[$i]}")
+                    if ! $matched_any; then
+                        warn "No current Messages handle matched: ${PREV_EXPORT_NAMES[$i]}"
+                    fi
+                done
+                if (( ${#picks[@]} > 0 )); then
+                    export_selected_contacts "${picks[@]}"
+                fi
+                CURRENT_EXPORT_MODE="full"
+                CURRENT_EXPORT_SINCE_NS=""
+                if ! $any_recent; then
+                    warn "No previous export could be refreshed."
+                fi
+                press_any_key
+                return 0
+                ;;
             a|A|all|ALL)
+                CURRENT_EXPORT_MODE="full"
+                CURRENT_EXPORT_SINCE_NS=""
                 local -a picks=()
                 for (( i=0; i<total_prev; i++ )); do
                     if [[ "${PREV_EXPORT_FORMAT[$i]}" == "grouped_contact_v1" ]]; then
@@ -2256,6 +2568,8 @@ refresh_previous_exports_prompt() {
                 return 0
                 ;;
             *)
+                CURRENT_EXPORT_MODE="full"
+                CURRENT_EXPORT_SINCE_NS=""
                 local -a picks=()
                 local -a raw_picks=()
                 local p prev_idx pick refreshed_group=false
@@ -2318,6 +2632,7 @@ do_per_contact_export() {
         return 0
     fi
     PER_CONTACT_ROOT="$BACKUP_ROOT"
+    ensure_archive_state
     info "Per-contact exports will be written to: ${BCYN}$PER_CONTACT_ROOT${RESET}"
     echo
 
@@ -2452,7 +2767,18 @@ do_per_contact_export() {
                     sleep 1
                     continue
                 fi
-                export_selected_contacts "${picks[@]}"
+                if (( ${#picks[@]} > 1 )) && ask_yn "Combine these selected handles into one named person for future refreshes?" "y"; then
+                    local group_name
+                    group_name=$(ask_input "Name for this grouped person" "")
+                    if [[ -n "$group_name" ]]; then
+                        export_grouped_picks "$group_name" "${picks[@]}"
+                    else
+                        warn "No name entered; exporting selections separately."
+                        export_selected_contacts "${picks[@]}"
+                    fi
+                else
+                    export_selected_contacts "${picks[@]}"
+                fi
                 press_any_key
                 ;;
         esac
@@ -2460,14 +2786,66 @@ do_per_contact_export() {
 }
 
 # Export each picked contact: writes per-contact DB, transcript, and copies attachments.
+export_grouped_picks() {
+    # export_grouped_picks <display_name> <pick...>
+    local display_name="$1"; shift
+    local pick i ids handles sep="" raw
+    ids=""
+    handles=""
+    for pick in "$@"; do
+        i=$(( pick - 1 ))
+        raw="${ROSTER_HANDLE_IDS[$i]:-${ROSTER_HANDLE_ROWID[$i]}}"
+        if [[ -z "$ids" ]]; then
+            ids="$raw"
+            handles="${ROSTER_HANDLE_RAW[$i]}"
+        else
+            ids="$ids,$raw"
+            handles="$handles | ${ROSTER_HANDLE_RAW[$i]}"
+        fi
+    done
+    ids=$(printf '%s\n' "$ids" | tr ',' '\n' | awk 'NF && !seen[$0]++' | paste -sd, -)
+    if ! safe_sql_id_list "$ids"; then
+        err "Refusing invalid grouped handle id list: $ids"
+        return 1
+    fi
+    local slug outdir aliases state_dir
+    slug=$(slugify "$display_name")
+    [[ -z "$slug" ]] && slug="grouped_contact"
+    outdir="$PER_CONTACT_ROOT/$slug"
+    export_contact_id_list "$ids" "$handles" "$display_name" "$outdir"
+
+    ensure_archive_state
+    state_dir=$(archive_state_dir)
+    aliases=$(archive_aliases_file)
+    python3 - "$aliases" "$display_name" "$slug" "$handles" "$ids" <<'PY' 2>/dev/null || true
+import json, pathlib, sys
+path = pathlib.Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    data = {"version": 1, "people": {}}
+people = data.setdefault("people", {})
+key = sys.argv[3]
+people[key] = {
+    "display_name": sys.argv[2],
+    "slug": sys.argv[3],
+    "handles": [h.strip() for h in sys.argv[4].split("|") if h.strip()],
+    "handle_rowids": sys.argv[5],
+}
+path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+PY
+    [[ -n "${SUDO_USER:-}" ]] && chown "$SUDO_USER" "$aliases" 2>/dev/null || true
+}
+
 export_contact_id_list() {
-    # export_contact_id_list <id_list> <handles> <display_name> <outdir>
+    # export_contact_id_list <id_list> <handles> <display_name> <outdir> [since_ns]
     # Used by grouped_contact_v1 refresh rows. It injects a temporary roster
     # row so the normal restartable exporter writes to the pinned group folder.
     local id_list="$1"
     local handles="$2"
     local display_name="$3"
     local outdir="$4"
+    local since_ns="${5:-}"
 
     if ! safe_sql_id_list "$id_list"; then
         err "Refusing invalid grouped handle id list: $id_list"
@@ -2500,7 +2878,10 @@ WHERE handle_id IN ($id_list) OR ROWID IN
     ROSTER_EXPORT_DIR_OVERRIDE[$(( synthetic - 1 ))]="$outdir"
     ROSTER_EXPORT_FORMAT[$(( synthetic - 1 ))]="grouped_contact_v1"
 
+    local old_since="$CURRENT_EXPORT_SINCE_NS"
+    [[ -n "$since_ns" ]] && CURRENT_EXPORT_SINCE_NS="$since_ns"
     export_selected_contacts "$synthetic"
+    CURRENT_EXPORT_SINCE_NS="$old_since"
 }
 
 export_selected_contacts() {
@@ -2535,6 +2916,26 @@ export_selected_contacts() {
             failures=$(( failures + 1 ))
             continue
         fi
+
+        local message_where="(handle_id IN ($id_list) OR ROWID IN (SELECT message_id FROM chat_message_join WHERE chat_id IN (SELECT chat_id FROM chat_handle_join WHERE handle_id IN ($id_list))))"
+        local source_message_where="(handle_id IN ($id_list) OR ROWID IN (SELECT message_id FROM src.chat_message_join WHERE chat_id IN (SELECT chat_id FROM src.chat_handle_join WHERE handle_id IN ($id_list))))"
+        if [[ -n "$CURRENT_EXPORT_SINCE_NS" ]]; then
+            if [[ "$CURRENT_EXPORT_SINCE_NS" =~ ^[0-9]+$ ]]; then
+                message_where="($message_where) AND date > $CURRENT_EXPORT_SINCE_NS"
+                source_message_where="($source_message_where) AND date > $CURRENT_EXPORT_SINCE_NS"
+            else
+                warn "Ignoring invalid recent-export cursor: $CURRENT_EXPORT_SINCE_NS"
+                CURRENT_EXPORT_SINCE_NS=""
+            fi
+        fi
+        local selected_msg_count
+        selected_msg_count=$(sqlite3 "$DB_TMP" "SELECT COUNT(*) FROM message WHERE $message_where;" 2>/dev/null)
+        [[ "$selected_msg_count" =~ ^[0-9]+$ ]] || selected_msg_count=0
+        if [[ -n "$CURRENT_EXPORT_SINCE_NS" && "$selected_msg_count" -eq 0 ]]; then
+            info "[$pick] $name — no newer messages since last cursor; skipping."
+            continue
+        fi
+        nmsgs="$selected_msg_count"
 
         # Slug: prefer name, fallback to handle
         local slug
@@ -2602,9 +3003,7 @@ EOF
 ATTACH DATABASE '$DB_TMP' AS src;
 
 CREATE TABLE handle      AS SELECT * FROM src.handle      WHERE ROWID IN ($id_list);
-CREATE TABLE message     AS SELECT * FROM src.message     WHERE handle_id IN ($id_list) OR ROWID IN
-    (SELECT message_id FROM src.chat_message_join WHERE chat_id IN
-        (SELECT chat_id FROM src.chat_handle_join WHERE handle_id IN ($id_list)));
+CREATE TABLE message     AS SELECT * FROM src.message     WHERE $source_message_where;
 CREATE TABLE chat        AS SELECT * FROM src.chat        WHERE ROWID IN
     (SELECT chat_id FROM src.chat_handle_join WHERE handle_id IN ($id_list));
 CREATE TABLE chat_handle_join  AS SELECT * FROM src.chat_handle_join  WHERE handle_id IN ($id_list);
@@ -2736,9 +3135,11 @@ WHERE a.filename IS NOT NULL AND a.filename != '';" 2>/dev/null)
         fi
 
         # 4) metadata.json
-        local first_date last_date
+        local first_date last_date last_date_ns
         first_date=$(sqlite3 "$out_db" "SELECT datetime((MIN(date)/1000000000) + strftime('%s','2001-01-01'), 'unixepoch', 'localtime') FROM message;" 2>/dev/null)
         last_date=$(sqlite3  "$out_db" "SELECT datetime((MAX(date)/1000000000) + strftime('%s','2001-01-01'), 'unixepoch', 'localtime') FROM message;" 2>/dev/null)
+        last_date_ns=$(sqlite3 "$out_db" "SELECT COALESCE(MAX(date),0) FROM message;" 2>/dev/null)
+        [[ "$last_date_ns" =~ ^[0-9]+$ ]] || last_date_ns=0
         cat > "$out_meta" <<JSON
 {
   "contact_name": $(json_string "$name"),
@@ -2752,6 +3153,7 @@ WHERE a.filename IS NOT NULL AND a.filename != '';" 2>/dev/null)
   "attachment_copy_errors": $copy_errors,
   "first_message": $(json_string "$first_date"),
   "last_message": $(json_string "$last_date"),
+  "last_message_ns": $last_date_ns,
   "exported_at": $(json_string "$(_ts)"),
   "source_db": $(json_string "$MESSAGES_DB"),
   "script_version": $(json_string "$SCRIPT_VERSION"),
@@ -2769,11 +3171,15 @@ contact=$(printf '%s' "$name")
 handles=$(printf '%s' "$hid")
 handle_rowids=$id_list
 messages=$db_msg_count
+last_message=$last_date
+last_message_ns=$last_date_ns
 attachments_copied=$copied
 attachments_already_present=$already
 attachments_missing=$skipped
 attachment_copy_errors=$copy_errors
 EOF
+        record_export_history "$([[ $copy_errors -eq 0 ]] && echo complete || echo partial)" "$name" "$hid" "$id_list" "$outdir" "$db_msg_count" "$first_date" "$last_date" "$last_date_ns" "$export_format" "$CURRENT_EXPORT_MODE" "$CURRENT_EXPORT_SINCE_NS"
+        RUN_EXPORTED_DIRS+=("$outdir")
         if [[ $copy_errors -eq 0 ]]; then
             : > "$complete_file"
         fi
@@ -2829,7 +3235,7 @@ main_menu() {
         echo -e "  ${BBLU}[5]${RESET}  View log file"
         echo -e "  ${BBLU}[6]${RESET}  ${BMAG}iCloud Cleanup & Verify${RESET}  ${DIM}(delete local + clear iCloud quota)${RESET}"
         echo -e "  ${BBLU}[7]${RESET}  ${BOLD}Check iCloud Status${RESET}        ${DIM}(verify, wait timer, open UI, retry)${RESET}"
-        echo -e "  ${BBLU}[8]${RESET}  ${BOLD}Browse contacts & export per-person archive${RESET}  ${DIM}(v2.5 — refresh previous exports)${RESET}"
+        echo -e "  ${BBLU}[8]${RESET}  ${BOLD}Browse contacts & export per-person archive${RESET}  ${DIM}(v2.7.1 — history + in-place refresh)${RESET}"
         echo -e "  ${BBLU}[q]${RESET}  Quit"
         echo
         printf "  Select option: "
@@ -2906,6 +3312,8 @@ main() {
 
     # Ensure output dir exists for logging early
     mkdir -p "$OUTPUT_ROOT" 2>/dev/null || true
+    load_config
+    sync_archive_repo_run_logs
 
     banner
     section "Startup checks"

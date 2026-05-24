@@ -27,6 +27,15 @@ tail -f /tmp/cpuguard.out
 kill "$(cat /tmp/cpuguard.pid)"
 ```
 
+## Launch at login
+
+```bash
+bash cpu-guard-install.sh
+```
+
+This installs the user LaunchAgent `com.amol.cpu-guard`, starts it immediately,
+and restarts it automatically at login.
+
 ## Requirements
 
 ```bash

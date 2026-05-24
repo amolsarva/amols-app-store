@@ -1,337 +1,143 @@
 #!/bin/bash
-# ╔══════════════════════════════════════════════════════════════════════════╗
-# ║         GitHub Auto-Push Manager  v4                                    ║
-# ║  — Discovers git repos in your search folders on launch                 ║
-# ║  — Lets you toggle sync on/off per repo                                 ║
-# ║  — Drives a background LaunchAgent that keeps synced repos up to date   ║
-# ╚══════════════════════════════════════════════════════════════════════════╝
-# Compatible with bash 3.2+ (macOS default)
+# GitHub Auto-Push Manager v5
+# A local TUI for the auto-discovering GitHub sync runner.
+# Compatible with macOS bash 3.2.
 set -uo pipefail
 
-# ── Paths ─────────────────────────────────────────────────────────────────────
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/github-autopush"
 CONFIG_FILE="$CONFIG_DIR/config"
-ROOTS_FILE="$CONFIG_DIR/search_roots.txt"   # one root per line
-SYNC_FILE="$CONFIG_DIR/sync_enabled.txt"    # one repo per line = enabled for sync
+ROOTS_FILE="$CONFIG_DIR/search_roots.txt"
+IGNORE_FILE="$CONFIG_DIR/ignore.txt"
+LEGACY_SYNC_FILE="$CONFIG_DIR/sync_enabled.txt"
+DISCOVERED_FILE="$CONFIG_DIR/last_scan.txt"
 HISTORY_FILE="$CONFIG_DIR/history.tsv"
 LAST_RUN_FILE="$CONFIG_DIR/last_run_summary.txt"
 LOCK_DIR="$CONFIG_DIR/.runner.lock"
 PLIST="$HOME/Library/LaunchAgents/com.amol.github-autopush.plist"
 LABEL="com.amol.github-autopush"
 SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
-
-RUNNER_CANDIDATES=(
-  "$SCRIPT_DIR/github-autopush-runner.sh"
-  "$HOME/bin/github-autopush-runner.sh"
-)
+RUNNER="$SCRIPT_DIR/github-autopush-runner.sh"
+INSTALL_DIR="$HOME/bin"
+INSTALL_RUNNER="$INSTALL_DIR/github-autopush-runner.sh"
 
 mkdir -p "$CONFIG_DIR"
-touch "$SYNC_FILE" "$HISTORY_FILE"
+touch "$IGNORE_FILE" "$LEGACY_SYNC_FILE" "$HISTORY_FILE"
 
-# ── Config ────────────────────────────────────────────────────────────────────
 [[ -f "$CONFIG_FILE" ]] && source "$CONFIG_FILE"
 INTERVAL="${INTERVAL:-300}"
+SEARCH_MAX_DEPTH="${SEARCH_MAX_DEPTH:-8}"
+PULL_BEFORE_PUSH="${PULL_BEFORE_PUSH:-1}"
+AUTO_CONVERT_HTTPS="${AUTO_CONVERT_HTTPS:-1}"
+AUTO_CREATE_UPSTREAM="${AUTO_CREATE_UPSTREAM:-1}"
+COMMIT_PREFIX="${COMMIT_PREFIX:-auto: sync}"
 
-# Seed default search roots file if it doesn't exist
 if [[ ! -f "$ROOTS_FILE" ]]; then
   cat > "$ROOTS_FILE" <<DEFAULTS
+$HOME/Documents/root
 $HOME/Library/Mobile Documents/com~apple~CloudDocs/Documents/root
-$HOME/Documents
 DEFAULTS
 fi
+
+NOW_ISO() { date '+%Y-%m-%d %H:%M:%S'; }
+clear_scr() { printf '\033c'; }
+press_enter() { printf '\nPress Enter to continue...'; read -r _; }
+info() { printf '\n\033[1;32m[%s]\033[0m %s\n' "$(NOW_ISO)" "$*"; }
+warn() { printf '\n\033[1;33mWARNING:\033[0m %s\n' "$*"; }
+err() { printf '\n\033[1;31mERROR:\033[0m %s\n' "$*"; }
+
+normalize() {
+  python3 -c 'import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))' "$1" 2>/dev/null || echo "$1"
+}
 
 save_config() {
   cat > "$CONFIG_FILE" <<CFG
 INTERVAL=$INTERVAL
+SEARCH_MAX_DEPTH=$SEARCH_MAX_DEPTH
+PULL_BEFORE_PUSH=$PULL_BEFORE_PUSH
+AUTO_CONVERT_HTTPS=$AUTO_CONVERT_HTTPS
+AUTO_CREATE_UPSTREAM=$AUTO_CREATE_UPSTREAM
+COMMIT_PREFIX="$COMMIT_PREFIX"
 CFG
 }
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-NOW_ISO()     { date '+%Y-%m-%d %H:%M:%S'; }
-clear_scr()   { printf '\033c'; }
-press_enter() { printf '\nPress Enter to continue…'; read -r _; }
-
-info() { printf '\n\033[1;32m[%s]\033[0m %s\n\n' "$(NOW_ISO)" "$*"; }
-warn() { printf '\n\033[1;33mWARNING:\033[0m %s\n\n' "$*"; }
-err()  { printf '\n\033[1;31mERROR:\033[0m %s\n\n' "$*"; }
-
-normalize() {
-  python3 -c "import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))" "$1" 2>/dev/null || echo "$1"
+is_github_url() {
+  case "$1" in
+    git@github.com:*|ssh://git@github.com/*|https://github.com/*|http://github.com/*) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
-resolve_runner() {
-  local c
-  for c in "${RUNNER_CANDIDATES[@]}"; do
-    [[ -f "$c" ]] && { echo "$c"; return 0; }
-  done
-  echo "${RUNNER_CANDIDATES[0]}"
+short_remote() {
+  local url="$1"
+  url="${url#https://github.com/}"
+  url="${url#http://github.com/}"
+  url="${url#git@github.com:}"
+  url="${url#ssh://git@github.com/}"
+  url="${url%.git}"
+  echo "$url"
+}
+
+is_ignored() {
+  local repo needle
+  repo="$(normalize "$1")"
+  grep -Fxq "$repo" "$IGNORE_FILE" 2>/dev/null && return 0
+  while IFS= read -r needle; do
+    [[ -z "$needle" || "$needle" == \#* ]] && continue
+    case "$repo" in *"$needle"*) return 0 ;; esac
+  done < "$IGNORE_FILE"
   return 1
 }
-RUNNER="$(resolve_runner || true)"
 
-# ── Repo discovery ────────────────────────────────────────────────────────────
-# Writes discovered repos to a temp file; prints the path
-DISCOVERED_CACHE="$CONFIG_DIR/.discovered_cache.txt"
+ignore_repo() {
+  local repo
+  repo="$(normalize "$1")"
+  grep -Fxq "$repo" "$IGNORE_FILE" 2>/dev/null || echo "$repo" >> "$IGNORE_FILE"
+  sort -u "$IGNORE_FILE" -o "$IGNORE_FILE"
+}
 
-discover_repos() {
-  # Re-scan every time this is called; write to cache
-  local root
-  rm -f "$DISCOVERED_CACHE"
+unignore_repo() {
+  local repo tmp
+  repo="$(normalize "$1")"
+  tmp="$CONFIG_DIR/.ignore.$$"
+  grep -Fxv "$repo" "$IGNORE_FILE" > "$tmp" 2>/dev/null || true
+  mv -f "$tmp" "$IGNORE_FILE"
+}
+
+discover_all_repos() {
+  local tmp root repo remote git_entry
+  tmp="$CONFIG_DIR/.manager_scan.$$"
+  : > "$tmp"
   while IFS= read -r root; do
     [[ -z "$root" || "$root" == \#* ]] && continue
     root="$(normalize "$root")"
     [[ -d "$root" ]] || continue
-    # find .git dirs but skip node_modules and nested .git
-    find "$root" -type d -name ".git" 2>/dev/null \
-      | grep -v '/node_modules/' \
-      | grep -v '/.git/.git' \
-      | sed 's|/.git$||' \
-      >> "$DISCOVERED_CACHE"
+    find "$root" -maxdepth "$SEARCH_MAX_DEPTH" \
+      \( -name node_modules -o -name .venv -o -name venv -o -name env -o -name __pycache__ -o -name .tox -o -name .mypy_cache -o -name .pytest_cache -o -name dist -o -name build -o -name Library -o -name Movies -o -name Music -o -name Pictures \) -type d -prune -o \
+      \( -name .git -print \) 2>/dev/null |
+    while IFS= read -r git_entry; do
+      if [[ -d "$git_entry" ]]; then repo="${git_entry%/.git}"; else repo="$(dirname "$git_entry")"; fi
+      repo="$(normalize "$repo")"
+      remote="$(git -C "$repo" remote get-url origin 2>/dev/null || true)"
+      [[ -n "$remote" ]] && is_github_url "$remote" && printf '%s\n' "$repo" >> "$tmp"
+    done
   done < "$ROOTS_FILE"
-  # Sort + deduplicate in place
-  if [[ -f "$DISCOVERED_CACHE" ]]; then
-    sort -u "$DISCOVERED_CACHE" -o "$DISCOVERED_CACHE"
-  else
-    touch "$DISCOVERED_CACHE"
-  fi
+  sort -u "$tmp" > "$DISCOVERED_FILE"
+  rm -f "$tmp"
 }
 
-repo_count()   { [[ -f "$DISCOVERED_CACHE" ]] && grep -c '.' "$DISCOVERED_CACHE" 2>/dev/null || echo 0; }
-synced_count() { grep -c '.' "$SYNC_FILE" 2>/dev/null || echo 0; }
-
-# ── Sync-list helpers ─────────────────────────────────────────────────────────
-is_synced() {
-  local repo
-  repo="$(normalize "$1")"
-  grep -Fxq "$repo" "$SYNC_FILE" 2>/dev/null
-}
-
-enable_sync() {
-  local repo
-  repo="$(normalize "$1")"
-  grep -Fxq "$repo" "$SYNC_FILE" 2>/dev/null || echo "$repo" >> "$SYNC_FILE"
-  sort -u "$SYNC_FILE" -o "$SYNC_FILE"
-}
-
-disable_sync() {
-  local repo
-  repo="$(normalize "$1")"
-  grep -Fxv "$repo" "$SYNC_FILE" > "$SYNC_FILE.tmp" 2>/dev/null || true
-  mv -f "$SYNC_FILE.tmp" "$SYNC_FILE"
-}
-
-# ── Repo list display ─────────────────────────────────────────────────────────
-list_repos() {
-  [[ -f "$DISCOVERED_CACHE" ]] || { echo "  (not scanned yet)"; return; }
-  [[ -s "$DISCOVERED_CACHE" ]] || { echo "  No git repos found under your search roots."; return; }
-
-  local idx=1 repo name branch remote sync_mark
-
-  printf '\n'
-  printf '  \033[1m%-4s  %-6s  %-28s  %-18s  %s\033[0m\n' "#" "SYNC" "REPO" "BRANCH" "REMOTE"
-  printf '  %-4s  %-6s  %-28s  %-18s  %s\n' "----" "------" "----------------------------" "------------------" "------"
-
+repo_count() { grep -c '.' "$DISCOVERED_FILE" 2>/dev/null || echo 0; }
+managed_count() {
+  local count=0 repo
+  [[ -f "$DISCOVERED_FILE" ]] || { echo 0; return; }
   while IFS= read -r repo; do
     [[ -z "$repo" ]] && continue
-    name="$(basename "$repo")"
-    branch="$(git -C "$repo" symbolic-ref --quiet --short HEAD 2>/dev/null || echo "(detached)")"
-    remote="$(git -C "$repo" remote get-url origin 2>/dev/null || echo "(no remote)")"
-    # Shorten GitHub URLs for display
-    remote="${remote#https://github.com/}"
-    remote="${remote#git@github.com:}"
-    remote="${remote%.git}"
-
-    if is_synced "$repo"; then
-      sync_mark="\033[1;32m✓ ON  \033[0m"
-    else
-      sync_mark="\033[0;90m  off \033[0m"
-    fi
-
-    printf "  \033[1m%-4s\033[0m  %b  %-28s  %-18s  %s\n" \
-      "$idx" "$sync_mark" "${name:0:28}" "${branch:0:18}" "${remote:0:48}"
-    idx=$((idx+1))
-  done < "$DISCOVERED_CACHE"
-  printf '\n'
+    is_ignored "$repo" || count=$((count+1))
+  done < "$DISCOVERED_FILE"
+  echo "$count"
 }
 
-# Returns repo path at 1-based index $1 from cache
-repo_at_index() {
-  local n="$1"
-  [[ -f "$DISCOVERED_CACHE" ]] || return 1
-  sed -n "${n}p" "$DISCOVERED_CACHE"
-}
+repo_at_index() { sed -n "${1}p" "$DISCOVERED_FILE" 2>/dev/null; }
 
-# ── Toggle menu ───────────────────────────────────────────────────────────────
-toggle_sync_menu() {
-  discover_repos   # fresh scan every time we enter this menu
-
-  if [[ ! -s "$DISCOVERED_CACHE" ]]; then
-    warn "No git repos found. Check your search roots (option 6)."
-    press_enter
-    return
-  fi
-
-  local input cmd args n repo
-
-  while true; do
-    clear_scr
-    echo "╔══════════════════════════════════════════════════════════════════════════╗"
-    echo "║                     Select Repos to Auto-Sync                           ║"
-    echo "╚══════════════════════════════════════════════════════════════════════════╝"
-    list_repos
-
-    echo "  Commands:"
-    echo "    <number>        Toggle sync for that repo (e.g.  3)"
-    echo "    on  <n> [n…]    Enable sync  (e.g.  on 1 3 5)"
-    echo "    off <n> [n…]    Disable sync (e.g.  off 2 4)"
-    echo "    all             Enable sync for ALL repos"
-    echo "    none            Disable sync for ALL repos"
-    echo "    done            Back to main menu"
-    printf '\n  Command: '
-    read -r input || input=""
-
-    # Split input into cmd + rest
-    cmd="${input%% *}"
-    args="${input#* }"
-    [[ "$args" == "$cmd" ]] && args=""
-    cmd="$(echo "$cmd" | tr '[:upper:]' '[:lower:]')"
-
-    case "$cmd" in
-      done|q|back|"")
-        return ;;
-
-      all)
-        while IFS= read -r repo; do
-          [[ -z "$repo" ]] && continue
-          enable_sync "$repo"
-        done < "$DISCOVERED_CACHE"
-        info "Sync enabled for all repos."
-        sleep 1 ;;
-
-      none)
-        while IFS= read -r repo; do
-          [[ -z "$repo" ]] && continue
-          disable_sync "$repo"
-        done < "$DISCOVERED_CACHE"
-        info "Sync disabled for all repos."
-        sleep 1 ;;
-
-      on)
-        for n in $args; do
-          repo="$(repo_at_index "$n")"
-          if [[ -n "$repo" ]]; then
-            enable_sync "$repo"
-            info "Sync ON:  $(basename "$repo")"
-          else
-            warn "No repo at index $n"
-          fi
-        done
-        sleep 0.8 ;;
-
-      off)
-        for n in $args; do
-          repo="$(repo_at_index "$n")"
-          if [[ -n "$repo" ]]; then
-            disable_sync "$repo"
-            info "Sync OFF: $(basename "$repo")"
-          else
-            warn "No repo at index $n"
-          fi
-        done
-        sleep 0.8 ;;
-
-      *)
-        # Bare number = toggle
-        if echo "$cmd" | grep -qE '^[0-9]+$'; then
-          repo="$(repo_at_index "$cmd")"
-          if [[ -n "$repo" ]]; then
-            if is_synced "$repo"; then
-              disable_sync "$repo"
-              info "Sync OFF: $(basename "$repo")"
-            else
-              enable_sync "$repo"
-              info "Sync ON:  $(basename "$repo")"
-            fi
-            sleep 0.6
-          else
-            warn "No repo at index $cmd."
-            sleep 1
-          fi
-        else
-          warn "Unknown command: $input"
-          sleep 1
-        fi ;;
-    esac
-  done
-}
-
-# ── Search roots management ───────────────────────────────────────────────────
-manage_roots_menu() {
-  local idx root choice n newpath
-
-  while true; do
-    clear_scr
-    echo "╔══════════════════════════════════════════════════════════════════════════╗"
-    echo "║                         Search Roots                                    ║"
-    echo "╚══════════════════════════════════════════════════════════════════════════╝"
-    echo
-    idx=1
-    while IFS= read -r root; do
-      [[ -z "$root" || "$root" == \#* ]] && continue
-      if [[ -d "$(normalize "$root")" ]]; then
-        printf '  \033[1;32m%d)\033[0m %s\n' "$idx" "$root"
-      else
-        printf '  \033[1;31m%d)\033[0m %s  (not found)\n' "$idx" "$root"
-      fi
-      idx=$((idx+1))
-    done < "$ROOTS_FILE"
-    echo
-    echo "  a) Add a search root"
-    echo "  r) Remove a search root"
-    echo "  d) Done"
-    echo
-    printf '  Choice: '
-    read -r choice || choice=""
-    choice="$(echo "$choice" | tr '[:upper:]' '[:lower:]')"
-
-    case "$choice" in
-      a|add)
-        printf '  Path to add: '
-        read -r newpath || newpath=""
-        [[ -z "$newpath" ]] && continue
-        if [[ -d "$(normalize "$newpath")" ]]; then
-          echo "$newpath" >> "$ROOTS_FILE"
-          info "Added: $newpath"
-        else
-          warn "Directory not found: $newpath  (adding anyway)"
-          echo "$newpath" >> "$ROOTS_FILE"
-        fi
-        sleep 1 ;;
-
-      r|remove)
-        printf '  Remove root number: '
-        read -r n || n=""
-        if echo "$n" | grep -qE '^[0-9]+$'; then
-          local total_roots
-          total_roots="$(grep -c '.' "$ROOTS_FILE" 2>/dev/null || echo 0)"
-          if [[ "$n" -ge 1 && "$n" -le "$total_roots" ]]; then
-            sed -i "" "${n}d" "$ROOTS_FILE" 2>/dev/null || sed -i "${n}d" "$ROOTS_FILE"
-            info "Removed root #$n"
-          else
-            warn "Invalid number: $n"
-          fi
-        else
-          warn "Please enter a number."
-        fi
-        sleep 1 ;;
-
-      d|done|q|"") return ;;
-      *) warn "Unknown choice" ; sleep 1 ;;
-    esac
-  done
-}
-
-# ── Agent management ──────────────────────────────────────────────────────────
 agent_status() {
   launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1 && echo "running" || echo "stopped"
 }
@@ -342,8 +148,9 @@ install_agent() {
     return 1
   fi
   chmod +x "$RUNNER"
+  mkdir -p "$INSTALL_DIR" "$HOME/Library/Logs" "$(dirname "$PLIST")"
+  install -m 755 "$RUNNER" "$INSTALL_RUNNER"
   save_config
-  mkdir -p "$(dirname "$PLIST")"
   cat > "$PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -354,7 +161,7 @@ install_agent() {
   <array>
     <string>/bin/bash</string>
     <string>-l</string>
-    <string>$RUNNER</string>
+    <string>$INSTALL_RUNNER</string>
   </array>
   <key>StartInterval</key><integer>$INTERVAL</integer>
   <key>RunAtLoad</key><true/>
@@ -364,10 +171,12 @@ install_agent() {
 </plist>
 PLIST
   launchctl bootout "gui/$(id -u)" "$PLIST" >/dev/null 2>&1 || true
-  launchctl bootstrap "gui/$(id -u)" "$PLIST" && \
-  launchctl kickstart -k "gui/$(id -u)/$LABEL" && \
-  info "Agent installed and running (every ${INTERVAL}s)" || \
-  err "Failed to load agent — check $PLIST"
+  if launchctl bootstrap "gui/$(id -u)" "$PLIST" && launchctl kickstart -k "gui/$(id -u)/$LABEL"; then
+    info "Agent installed and running every ${INTERVAL}s."
+  else
+    err "Failed to load agent. Check $PLIST and ~/Library/Logs/github-autopush.err."
+    return 1
+  fi
 }
 
 stop_agent() {
@@ -378,203 +187,273 @@ stop_agent() {
   fi
 }
 
-set_interval() {
-  printf '  New interval in seconds [current: %s]: ' "$INTERVAL"
-  read -r newint || newint=""
-  if echo "$newint" | grep -qE '^[0-9]+$'; then
-    INTERVAL="$newint"
-    save_config
-    info "Interval set to ${INTERVAL}s. Reinstall agent to apply (option 2)."
-  else
-    err "Must be a whole number."
-  fi
-}
-
-# ── Dashboard ─────────────────────────────────────────────────────────────────
 read_summary() { awk -F= -v k="$1" '$1==k{print $2}' "$LAST_RUN_FILE" 2>/dev/null | tail -1; }
 
 show_recent_history() {
-  local count="${1:-10}"
+  local count="${1:-12}"
   if [[ ! -s "$HISTORY_FILE" ]]; then
     echo "  No history yet."
     return
   fi
-  printf '  \033[1m%-19s  %-8s  %-6s  %-22s  %s\033[0m\n' "TIME" "STATUS" "PUSHED" "DETAIL" "REPO"
-  printf '  %-19s  %-8s  %-6s  %-22s  %s\n' "-------------------" "--------" "------" "----------------------" "----"
+  printf '  \033[1m%-19s  %-8s  %-6s  %-24s  %s\033[0m\n' "TIME" "STATUS" "PUSH" "DETAIL" "REPO"
+  printf '  %-19s  %-8s  %-6s  %-24s  %s\n' "-------------------" "--------" "------" "------------------------" "----"
   tail -n "$count" "$HISTORY_FILE" | while IFS=$'\t' read -r ts repo branch status detail changed committed pushed _rest; do
-    local short_repo pushed_icon
-    short_repo="$(basename "${repo:-?}")"
-    [[ "${pushed:-0}" == "1" ]] && pushed_icon="⬆ yes" || pushed_icon="  no"
-    printf '  %-19s  %-8s  %-6s  %-22s  %s\n' \
-      "$ts" "${status:-?}" "$pushed_icon" "${detail:0:22}" "$short_repo"
+    [[ "${pushed:-0}" == "1" ]] && pushed="yes" || pushed="no"
+    printf '  %-19s  %-8s  %-6s  %-24s  %s\n' "$ts" "${status:-?}" "$pushed" "${detail:0:24}" "$(basename "${repo:-?}")"
   done
 }
 
-show_dashboard() {
-  local total changed committed pushed skipped errors last_ts agent_st
-  total="$(read_summary total)";         total="${total:-0}"
-  changed="$(read_summary changed)";     changed="${changed:-0}"
-  committed="$(read_summary committed)"; committed="${committed:-0}"
-  pushed="$(read_summary pushed)";       pushed="${pushed:-0}"
-  skipped="$(read_summary skipped)";     skipped="${skipped:-0}"
-  errors="$(read_summary errors)";       errors="${errors:-0}"
-  last_ts="$(read_summary timestamp)";   last_ts="${last_ts:-never}"
-  agent_st="$(agent_status)"
+list_repos() {
+  local idx=1 repo name branch remote mark dirty
+  [[ -f "$DISCOVERED_FILE" ]] || discover_all_repos
+  [[ -s "$DISCOVERED_FILE" ]] || { echo "  No GitHub repos discovered."; return; }
+  printf '\n  \033[1m%-4s %-9s %-28s %-16s %-5s %s\033[0m\n' "#" "STATE" "REPO" "BRANCH" "DIRTY" "REMOTE"
+  printf '  %-4s %-9s %-28s %-16s %-5s %s\n' "----" "---------" "----------------------------" "----------------" "-----" "------"
+  while IFS= read -r repo; do
+    [[ -z "$repo" ]] && continue
+    name="$(basename "$repo")"
+    branch="$(git -C "$repo" symbolic-ref --quiet --short HEAD 2>/dev/null || echo "detached")"
+    remote="$(git -C "$repo" remote get-url origin 2>/dev/null || echo "?")"
+    if is_ignored "$repo"; then mark="ignored"; else mark="AUTO"; fi
+    if [[ -n "$(git -C "$repo" status --porcelain 2>/dev/null || true)" ]]; then dirty="yes"; else dirty="no"; fi
+    printf '  \033[1m%-4s\033[0m %-9s %-28s %-16s %-5s %s\n' \
+      "$idx" "$mark" "${name:0:28}" "${branch:0:16}" "$dirty" "$(short_remote "$remote" | cut -c1-56)"
+    idx=$((idx+1))
+  done < "$DISCOVERED_FILE"
+}
 
+manage_repos_menu() {
+  local input cmd args n repo
+  discover_all_repos
+  while true; do
+    clear_scr
+    echo "╔══════════════════════════════════════════════════════════════════════════╗"
+    echo "║                     GitHub Repos: AUTO unless ignored                   ║"
+    echo "╚══════════════════════════════════════════════════════════════════════════╝"
+    list_repos
+    echo
+    echo "  Commands:"
+    echo "    <number>         Toggle AUTO/ignored"
+    echo "    ignore <n> [n..] Ignore repos"
+    echo "    auto <n> [n..]   Manage repos automatically"
+    echo "    all              Manage all discovered GitHub repos"
+    echo "    scan             Rescan roots"
+    echo "    done             Back"
+    printf '\n  Command: '
+    read -r input || input=""
+    cmd="${input%% *}"
+    args="${input#* }"; [[ "$args" == "$cmd" ]] && args=""
+    cmd="$(echo "$cmd" | tr '[:upper:]' '[:lower:]')"
+    case "$cmd" in
+      done|q|back|"") return ;;
+      scan) discover_all_repos; info "Scan complete."; sleep 1 ;;
+      all)
+        while IFS= read -r repo; do [[ -n "$repo" ]] && unignore_repo "$repo"; done < "$DISCOVERED_FILE"
+        info "All discovered GitHub repos set to AUTO."; sleep 1 ;;
+      ignore)
+        for n in $args; do repo="$(repo_at_index "$n")"; [[ -n "$repo" ]] && ignore_repo "$repo"; done
+        info "Ignore list updated."; sleep 1 ;;
+      auto|on|enable)
+        for n in $args; do repo="$(repo_at_index "$n")"; [[ -n "$repo" ]] && unignore_repo "$repo"; done
+        info "Auto list updated."; sleep 1 ;;
+      *)
+        if echo "$cmd" | grep -qE '^[0-9]+$'; then
+          repo="$(repo_at_index "$cmd")"
+          if [[ -n "$repo" ]]; then
+            if is_ignored "$repo"; then unignore_repo "$repo"; info "AUTO: $(basename "$repo")"; else ignore_repo "$repo"; info "Ignored: $(basename "$repo")"; fi
+            sleep 0.7
+          else
+            warn "No repo at index $cmd."; sleep 1
+          fi
+        else
+          warn "Unknown command: $input"; sleep 1
+        fi ;;
+    esac
+  done
+}
+
+manage_roots_menu() {
+  local idx root choice n newpath tmp
+  while true; do
+    clear_scr
+    echo "╔══════════════════════════════════════════════════════════════════════════╗"
+    echo "║                              Search Roots                               ║"
+    echo "╚══════════════════════════════════════════════════════════════════════════╝"
+    echo
+    idx=1
+    while IFS= read -r root; do
+      [[ -z "$root" || "$root" == \#* ]] && continue
+      if [[ -d "$(normalize "$root")" ]]; then
+        printf '  \033[1;32m%d)\033[0m %s\n' "$idx" "$root"
+      else
+        printf '  \033[1;31m%d)\033[0m %s (not found)\n' "$idx" "$root"
+      fi
+      idx=$((idx+1))
+    done < "$ROOTS_FILE"
+    echo
+    echo "  a) Add root"
+    echo "  r) Remove root"
+    echo "  d) Done"
+    printf '\n  Choice: '
+    read -r choice || choice=""
+    choice="$(echo "$choice" | tr '[:upper:]' '[:lower:]')"
+    case "$choice" in
+      a|add)
+        printf '  Path to add: '; read -r newpath || newpath=""
+        [[ -z "$newpath" ]] && continue
+        echo "$newpath" >> "$ROOTS_FILE"
+        sort -u "$ROOTS_FILE" -o "$ROOTS_FILE"
+        info "Added: $newpath"; sleep 1 ;;
+      r|remove)
+        printf '  Remove root number: '; read -r n || n=""
+        if echo "$n" | grep -qE '^[0-9]+$'; then
+          tmp="$CONFIG_DIR/.roots.$$"
+          awk -v drop="$n" 'BEGIN{i=0} /^[[:space:]]*($|#)/{print; next} {i++; if(i!=drop) print}' "$ROOTS_FILE" > "$tmp"
+          mv -f "$tmp" "$ROOTS_FILE"
+          info "Removed root #$n"
+        else
+          warn "Enter a number."
+        fi
+        sleep 1 ;;
+      d|done|q|"") return ;;
+      *) warn "Unknown choice."; sleep 1 ;;
+    esac
+  done
+}
+
+settings_menu() {
+  local choice value
+  while true; do
+    clear_scr
+    echo "╔══════════════════════════════════════════════════════════════════════════╗"
+    echo "║                                Settings                                 ║"
+    echo "╚══════════════════════════════════════════════════════════════════════════╝"
+    echo
+    printf '  1) Interval seconds          %s\n' "$INTERVAL"
+    printf '  2) Search max depth          %s\n' "$SEARCH_MAX_DEPTH"
+    printf '  3) Pull/rebase before push   %s\n' "$PULL_BEFORE_PUSH"
+    printf '  4) Convert HTTPS to SSH      %s\n' "$AUTO_CONVERT_HTTPS"
+    printf '  5) Create missing upstreams  %s\n' "$AUTO_CREATE_UPSTREAM"
+    printf '  6) Commit message prefix     %s\n' "$COMMIT_PREFIX"
+    echo "  d) Done"
+    printf '\n  Choice: '
+    read -r choice || choice=""
+    case "$choice" in
+      1) printf '  New interval: '; read -r value; echo "$value" | grep -qE '^[0-9]+$' && INTERVAL="$value" ;;
+      2) printf '  New max depth: '; read -r value; echo "$value" | grep -qE '^[0-9]+$' && SEARCH_MAX_DEPTH="$value" ;;
+      3) [[ "$PULL_BEFORE_PUSH" == "1" ]] && PULL_BEFORE_PUSH=0 || PULL_BEFORE_PUSH=1 ;;
+      4) [[ "$AUTO_CONVERT_HTTPS" == "1" ]] && AUTO_CONVERT_HTTPS=0 || AUTO_CONVERT_HTTPS=1 ;;
+      5) [[ "$AUTO_CREATE_UPSTREAM" == "1" ]] && AUTO_CREATE_UPSTREAM=0 || AUTO_CREATE_UPSTREAM=1 ;;
+      6) printf '  New prefix: '; read -r value; [[ -n "$value" ]] && COMMIT_PREFIX="$value" ;;
+      d|done|q|"") save_config; return ;;
+      *) warn "Unknown choice."; sleep 1 ;;
+    esac
+    save_config
+  done
+}
+
+clear_locks() {
+  local removed=0 lock_pid repo git_dir lock age
+  if [[ -d "$LOCK_DIR" ]]; then
+    lock_pid="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+    if [[ -z "$lock_pid" ]] || ! kill -0 "$lock_pid" 2>/dev/null; then
+      rm -rf "$LOCK_DIR"; removed=$((removed+1)); echo "  removed runner lock"
+    else
+      echo "  runner lock is live (PID $lock_pid)"
+    fi
+  fi
+  discover_all_repos
+  while IFS= read -r repo; do
+    [[ -z "$repo" ]] && continue
+    git_dir="$(git -C "$repo" rev-parse --git-dir 2>/dev/null || true)"
+    [[ -n "$git_dir" ]] || continue
+    case "$git_dir" in /*) ;; *) git_dir="$repo/$git_dir" ;; esac
+    for lock in index.lock HEAD.lock COMMIT_EDITMSG.lock config.lock packed-refs.lock shallow.lock; do
+      [[ -f "$git_dir/$lock" ]] || continue
+      age=$(( $(date +%s) - $(stat -f %m "$git_dir/$lock" 2>/dev/null || echo 0) ))
+      if [[ "$age" -gt 45 ]]; then rm -f "$git_dir/$lock"; removed=$((removed+1)); echo "  removed $(basename "$repo")/$lock"; fi
+    done
+  done < "$DISCOVERED_FILE"
+  echo "  Removed $removed stale locks."
+}
+
+run_now() {
+  chmod +x "$RUNNER" 2>/dev/null || true
+  clear_locks
+  echo
+  echo "  Running one full sync cycle..."
+  echo "  ────────────────────────────────────────────────────────────────────────"
+  "$RUNNER"
+  echo "  ────────────────────────────────────────────────────────────────────────"
+  press_enter
+}
+
+show_dashboard() {
+  local total changed committed pushed skipped errors discovered last_ts agent_st
+  discover_all_repos
+  total="$(read_summary total)"; total="${total:-0}"
+  changed="$(read_summary changed)"; changed="${changed:-0}"
+  committed="$(read_summary committed)"; committed="${committed:-0}"
+  pushed="$(read_summary pushed)"; pushed="${pushed:-0}"
+  skipped="$(read_summary skipped)"; skipped="${skipped:-0}"
+  errors="$(read_summary errors)"; errors="${errors:-0}"
+  discovered="$(read_summary discovered)"; discovered="${discovered:-$(repo_count)}"
+  last_ts="$(read_summary timestamp)"; last_ts="${last_ts:-never}"
+  agent_st="$(agent_status)"
   clear_scr
   echo "╔══════════════════════════════════════════════════════════════════════════╗"
-  echo "║                  GitHub Auto-Push Dashboard  v4                         ║"
+  echo "║                    GitHub Auto-Push Dashboard v5                        ║"
   echo "╚══════════════════════════════════════════════════════════════════════════╝"
   echo
-  echo "  Search roots:"
-  while IFS= read -r root; do
-    [[ -z "$root" || "$root" == \#* ]] && continue
-    printf '    • %s\n' "$root"
-  done < "$ROOTS_FILE"
+  printf '  %-22s %s\n' "Agent:" "$agent_st"
+  printf '  %-22s %s\n' "Interval:" "${INTERVAL}s"
+  printf '  %-22s %s\n' "Runner:" "$INSTALL_RUNNER"
+  printf '  %-22s %s\n' "Last run:" "$last_ts"
+  printf '  %-22s %s managed / %s discovered\n' "Repos:" "$(managed_count)" "$(repo_count)"
+  printf '  %-22s total=%s changed=%s committed=%s pushed=%s skipped=%s errors=%s\n' "Last cycle:" "$total" "$changed" "$committed" "$pushed" "$skipped" "$errors"
   echo
-  printf '  %-18s %s\n' "Runner:"       "$RUNNER"
-  printf '  %-18s %s\n' "Agent:"        "$agent_st"
-  printf '  %-18s %s\n' "Interval:"     "${INTERVAL}s"
-  printf '  %-18s %s\n' "Last run:"     "$last_ts"
-  printf '  %-18s %s / %s repos synced\n' "Repos:"  "$(synced_count)" "$(repo_count)"
-  echo
-  printf '  Total: %-5s  Changed: %-5s  Committed: %-5s  Pushed: %-5s  Errors: %-5s\n' \
-    "$total" "$changed" "$committed" "$pushed" "$errors"
+  echo "  Roots:"
+  while IFS= read -r root; do [[ -n "$root" && "$root" != \#* ]] && printf '    - %s\n' "$root"; done < "$ROOTS_FILE"
   echo
   echo "  Recent history:"
   show_recent_history 10
   echo
 }
 
-# ── Clear locks ───────────────────────────────────────────────────────────────
-clear_locks() {
-  local removed=0 skipped=0 repo lock
-
-  echo
-  echo "  ─── Clearing locks ──────────────────────────────────────────────────────"
-
-  # Age threshold: locks older than this many seconds are considered stale
-  local STALE_SECS=30
-
-  # Helper: seconds since file was last modified (macOS stat)
-  lock_age_secs() { echo $(( $(date +%s) - $(stat -f %m "$1" 2>/dev/null || echo 0) )); }
-
-  # 1. Runner lock
-  if [[ -d "$LOCK_DIR" ]]; then
-    local lock_pid
-    lock_pid="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
-    if [[ -n "$lock_pid" ]] && kill -0 "$lock_pid" 2>/dev/null; then
-      printf '  %-52s %s\n' "runner (.runner.lock)" "SKIP  (live PID $lock_pid)"
-      skipped=$((skipped+1))
-    else
-      rm -rf "$LOCK_DIR"
-      printf '  %-52s %s\n' "runner (.runner.lock)" "removed  (dead PID ${lock_pid:-unknown})"
-      removed=$((removed+1))
-    fi
-  else
-    printf '  %-52s %s\n' "runner (.runner.lock)" "clean"
-  fi
-
-  # 2. Per-repo git lock files for every synced repo
-  local git_locks=("index.lock" "HEAD.lock" "COMMIT_EDITMSG.lock" "config.lock" "packed-refs.lock")
-  if [[ -s "$SYNC_FILE" ]]; then
-    while IFS= read -r repo; do
-      [[ -z "$repo" ]] && continue
-      local lockname
-      for lockname in "${git_locks[@]}"; do
-        lock="$repo/.git/$lockname"
-        if [[ -f "$lock" ]]; then
-          local age
-          age="$(lock_age_secs "$lock")"
-          if [[ "$age" -lt "$STALE_SECS" ]] && pgrep -x git >/dev/null 2>&1; then
-            printf '  %-52s %s\n' "$(basename "$repo")/$lockname" "SKIP  (${age}s old, git running)"
-            skipped=$((skipped+1))
-          else
-            rm -f "$lock"
-            printf '  %-52s %s\n' "$(basename "$repo")/$lockname" "removed  (${age}s old)"
-            removed=$((removed+1))
-          fi
-        fi
-      done
-    done < "$SYNC_FILE"
-  fi
-
-  echo "  ─────────────────────────────────────────────────────────────────────────"
-  printf '  Removed: %s   Skipped (live): %s\n\n' "$removed" "$skipped"
-}
-
-# ── Run once ──────────────────────────────────────────────────────────────────
-run_now() {
-  [[ -x "$RUNNER" ]] || chmod +x "$RUNNER" 2>/dev/null || true
-  if [[ ! -x "$RUNNER" ]]; then
-    err "Runner not executable: $RUNNER"
-    press_enter
-    return
-  fi
-  clear_locks
-  echo "  Running one push cycle…"
-  echo "  ─────────────────────────────────────────────────────────────────────────"
-  "$RUNNER"
-  echo "  ─────────────────────────────────────────────────────────────────────────"
-  echo
-  press_enter
-}
-
-# ── Logs ──────────────────────────────────────────────────────────────────────
-show_logs() {
-  echo
-  echo "  ─── stdout (last 60 lines) ──────────────────────────────────────────────"
-  tail -n 60 "$HOME/Library/Logs/github-autopush.out" 2>/dev/null || echo "  (no log yet)"
-  echo
-  echo "  ─── stderr (last 40 lines) ──────────────────────────────────────────────"
-  tail -n 40 "$HOME/Library/Logs/github-autopush.err" 2>/dev/null || echo "  (no log yet)"
-  echo
-  press_enter
-}
-
-# ── Main menu ─────────────────────────────────────────────────────────────────
 main_menu() {
-  save_config
-  # Initial scan so dashboard shows repo count immediately
-  discover_repos
-
   local choice
   while true; do
     show_dashboard
-    echo "  ┌─ Repos ──────────────────────────────────────────────────────────────┐"
-    echo "  │  1) View & toggle repo sync  (choose which repos to auto-sync)       │"
-    echo "  ├─ Agent ──────────────────────────────────────────────────────────────┤"
-    echo "  │  2) Install / restart background agent                               │"
-    echo "  │  3) Stop background agent                                            │"
-    echo "  │  4) Run one push cycle now  (clears locks first)                     │"
-    echo "  │  5) Change sync interval                                             │"
-    echo "  ├─ Config ─────────────────────────────────────────────────────────────┤"
-    echo "  │  6) Manage search roots  (add/remove folders to scan)                │"
-    echo "  ├─ Debug ──────────────────────────────────────────────────────────────┤"
-    echo "  │  7) Show logs                                                        │"
-    echo "  │  8) Refresh dashboard                                                │"
-    echo "  │  9) Clear locks  (runner + all repo index.locks)                     │"
-    echo "  │  q) Quit                                                             │"
-    echo "  └──────────────────────────────────────────────────────────────────────┘"
-    echo
-    printf '  Choose: '
+    echo "  1) Repos: auto/ignore"
+    echo "  2) Install or restart persistent agent"
+    echo "  3) Stop persistent agent"
+    echo "  4) Run sync now"
+    echo "  5) Search roots"
+    echo "  6) Settings"
+    echo "  7) Clear stale locks"
+    echo "  8) Show discovered repos"
+    echo "  q) Quit"
+    printf '\n  Choice: '
     read -r choice || choice=""
-    choice="$(echo "$choice" | tr '[:upper:]' '[:lower:]')"
-
     case "$choice" in
-      1) toggle_sync_menu ;;
-      2) install_agent;  press_enter ;;
-      3) stop_agent;     press_enter ;;
+      1) manage_repos_menu ;;
+      2) install_agent; sleep 1 ;;
+      3) stop_agent; sleep 1 ;;
       4) run_now ;;
-      5) set_interval;   press_enter ;;
-      6) manage_roots_menu ;;
-      7) show_logs ;;
-      8) discover_repos ;;
-      9) clear_locks;    press_enter ;;
-      q|quit|exit) echo; exit 0 ;;
-      *) warn "Unknown choice: ${choice:-<empty>}"; sleep 1 ;;
+      5) manage_roots_menu ;;
+      6) settings_menu ;;
+      7) clear_locks; press_enter ;;
+      8) list_repos; press_enter ;;
+      q|quit|exit) clear_scr; exit 0 ;;
+      *) warn "Unknown choice."; sleep 1 ;;
     esac
   done
 }
 
-main_menu "$@"
+case "${1:-}" in
+  install) install_agent ;;
+  stop) stop_agent ;;
+  once|run) run_now ;;
+  scan) discover_all_repos; list_repos ;;
+  *) main_menu ;;
+esac
