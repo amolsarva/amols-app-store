@@ -227,9 +227,23 @@ start_loop() {
     info "Session loop already running (PID $pid)."
     return 0
   fi
-  nohup "$INSTALL_LOOP" >/dev/null 2>&1 &
-  echo $! > "$LOOP_PID_FILE"
-  info "Session loop started (PID $!)."
+  python3 - "$INSTALL_LOOP" "$LOOP_PID_FILE" <<'PY'
+import os, subprocess, sys
+script, pid_file = sys.argv[1], sys.argv[2]
+if os.fork():
+    sys.exit(0)
+os.setsid()
+if os.fork():
+    sys.exit(0)
+devnull = open(os.devnull, "rb")
+outnull = open(os.devnull, "ab")
+p = subprocess.Popen([script], stdin=devnull, stdout=outnull, stderr=outnull, start_new_session=True)
+with open(pid_file, "w") as f:
+    f.write(str(p.pid) + "\n")
+PY
+  sleep 0.5
+  pid="$(cat "$LOOP_PID_FILE" 2>/dev/null || true)"
+  info "Session loop started (PID ${pid:-unknown})."
 }
 
 stop_loop() {
