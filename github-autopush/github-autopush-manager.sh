@@ -163,6 +163,13 @@ install_agent() {
     <string>-l</string>
     <string>$INSTALL_RUNNER</string>
   </array>
+  <key>WorkingDirectory</key><string>$HOME</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key><string>$HOME</string>
+    <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>XDG_CONFIG_HOME</key><string>$HOME/.config</string>
+  </dict>
   <key>StartInterval</key><integer>$INTERVAL</integer>
   <key>RunAtLoad</key><true/>
   <key>StandardOutPath</key><string>$HOME/Library/Logs/github-autopush.out</string>
