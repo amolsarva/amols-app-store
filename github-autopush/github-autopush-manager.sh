@@ -13,12 +13,14 @@ DISCOVERED_FILE="$CONFIG_DIR/last_scan.txt"
 HISTORY_FILE="$CONFIG_DIR/history.tsv"
 LAST_RUN_FILE="$CONFIG_DIR/last_run_summary.txt"
 LOCK_DIR="$CONFIG_DIR/.runner.lock"
+LOOP_PID_FILE="$CONFIG_DIR/session-loop.pid"
 PLIST="$HOME/Library/LaunchAgents/com.amol.github-autopush.plist"
 LABEL="com.amol.github-autopush"
 SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
 RUNNER="$SCRIPT_DIR/github-autopush-runner.sh"
 INSTALL_DIR="$HOME/bin"
 INSTALL_RUNNER="$INSTALL_DIR/github-autopush-runner.sh"
+INSTALL_LOOP="$INSTALL_DIR/github-autopush-loop.sh"
 
 mkdir -p "$CONFIG_DIR"
 touch "$IGNORE_FILE" "$LEGACY_SYNC_FILE" "$HISTORY_FILE"
@@ -150,6 +152,7 @@ install_agent() {
   chmod +x "$RUNNER"
   mkdir -p "$INSTALL_DIR" "$HOME/Library/Logs" "$(dirname "$PLIST")"
   install -m 755 "$RUNNER" "$INSTALL_RUNNER"
+  write_loop_script
   save_config
   cat > "$PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -183,6 +186,61 @@ PLIST
   else
     err "Failed to load agent. Check $PLIST and ~/Library/Logs/github-autopush.err."
     return 1
+  fi
+}
+
+write_loop_script() {
+  cat > "$INSTALL_LOOP" <<LOOP
+#!/bin/bash
+set -uo pipefail
+CONFIG_DIR="\${XDG_CONFIG_HOME:-\$HOME/.config}/github-autopush"
+CONFIG_FILE="\$CONFIG_DIR/config"
+RUNNER="$INSTALL_RUNNER"
+LOG="\$HOME/Library/Logs/github-autopush.session-loop.out"
+ERR="\$HOME/Library/Logs/github-autopush.session-loop.err"
+mkdir -p "\$CONFIG_DIR" "\$HOME/Library/Logs"
+while true; do
+  [[ -f "\$CONFIG_FILE" ]] && source "\$CONFIG_FILE"
+  INTERVAL="\${INTERVAL:-300}"
+  /bin/bash -l "\$RUNNER" >> "\$LOG" 2>> "\$ERR"
+  sleep "\$INTERVAL"
+done
+LOOP
+  chmod +x "$INSTALL_LOOP"
+}
+
+loop_status() {
+  local pid
+  pid="$(cat "$LOOP_PID_FILE" 2>/dev/null || true)"
+  if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+    echo "running (PID $pid)"
+  else
+    echo "stopped"
+  fi
+}
+
+start_loop() {
+  local pid
+  write_loop_script
+  pid="$(cat "$LOOP_PID_FILE" 2>/dev/null || true)"
+  if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+    info "Session loop already running (PID $pid)."
+    return 0
+  fi
+  nohup "$INSTALL_LOOP" >/dev/null 2>&1 &
+  echo $! > "$LOOP_PID_FILE"
+  info "Session loop started (PID $!)."
+}
+
+stop_loop() {
+  local pid
+  pid="$(cat "$LOOP_PID_FILE" 2>/dev/null || true)"
+  if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+    kill "$pid"
+    rm -f "$LOOP_PID_FILE"
+    info "Session loop stopped."
+  else
+    warn "Session loop was not running."
   fi
 }
 
@@ -413,6 +471,7 @@ show_dashboard() {
   echo "╚══════════════════════════════════════════════════════════════════════════╝"
   echo
   printf '  %-22s %s\n' "Agent:" "$agent_st"
+  printf '  %-22s %s\n' "Session loop:" "$(loop_status)"
   printf '  %-22s %s\n' "Interval:" "${INTERVAL}s"
   printf '  %-22s %s\n' "Runner:" "$INSTALL_RUNNER"
   printf '  %-22s %s\n' "Last run:" "$last_ts"
@@ -438,7 +497,9 @@ main_menu() {
     echo "  5) Search roots"
     echo "  6) Settings"
     echo "  7) Clear stale locks"
-    echo "  8) Show discovered repos"
+    echo "  8) Start session loop fallback"
+    echo "  9) Stop session loop fallback"
+    echo "  s) Show discovered repos"
     echo "  q) Quit"
     printf '\n  Choice: '
     read -r choice || choice=""
@@ -450,7 +511,9 @@ main_menu() {
       5) manage_roots_menu ;;
       6) settings_menu ;;
       7) clear_locks; press_enter ;;
-      8) list_repos; press_enter ;;
+      8) start_loop; sleep 1 ;;
+      9) stop_loop; sleep 1 ;;
+      s) list_repos; press_enter ;;
       q|quit|exit) clear_scr; exit 0 ;;
       *) warn "Unknown choice."; sleep 1 ;;
     esac
@@ -460,6 +523,8 @@ main_menu() {
 case "${1:-}" in
   install) install_agent ;;
   stop) stop_agent ;;
+  loop-start) start_loop ;;
+  loop-stop) stop_loop ;;
   once|run) run_now ;;
   scan) discover_all_repos; list_repos ;;
   *) main_menu ;;

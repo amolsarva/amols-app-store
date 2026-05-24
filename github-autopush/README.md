@@ -22,6 +22,8 @@ bash github-autopush-manager.sh install   # install/restart persistent agent
 bash github-autopush-manager.sh once      # run one sync cycle now
 bash github-autopush-manager.sh scan      # show discovered GitHub repos
 bash github-autopush-manager.sh stop      # stop the persistent agent
+bash github-autopush-manager.sh loop-start # start session fallback loop
+bash github-autopush-manager.sh loop-stop  # stop session fallback loop
 ```
 
 ## Behavior
@@ -67,6 +69,8 @@ The manager installs:
 - Logs: `~/Library/Logs/github-autopush.out` and `~/Library/Logs/github-autopush.err`
 
 The agent starts at login and runs at the configured interval.
+
+On macOS systems where a LaunchAgent cannot see `~/Documents` because of privacy controls, the manager can also start a session fallback loop. That loop is launched from the current user shell, writes to `~/Library/Logs/github-autopush.session-loop.out`, and uses the same interval.
 
 ## Notes
 
