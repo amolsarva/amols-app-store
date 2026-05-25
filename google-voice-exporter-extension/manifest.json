@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Google Voice Thread Exporter",
+  "description": "Auto-scroll a Google Voice conversation and export messages + photos as JSON, CSV, or TXT.",
+  "version": "1.1.0",
+  "action": {
+    "default_title": "Export Google Voice thread",
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://voice.google.com/*",
+    "https://*.googleapis.com/*",
+    "https://*.googleusercontent.com/*",
+    "https://storage.googleapis.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://voice.google.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

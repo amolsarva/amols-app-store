@@ -1,0 +1,101 @@
+#gv-exporter-panel {
+  background: #1a1d23;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  bottom: 18px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  color: #e8eaf0;
+  font: 12px/1.4 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  max-width: 360px;
+  padding: 10px 12px 12px;
+  position: fixed;
+  right: 18px;
+  z-index: 2147483647;
+}
+
+#gv-exporter-panel[hidden] {
+  display: none;
+}
+
+#gv-exporter-panel strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 5px;
+  color: #fff;
+}
+
+#gve-status {
+  color: #c8cfe0;
+  line-height: 1.35;
+  margin-bottom: 6px;
+  word-break: break-word;
+}
+
+#gve-log {
+  background: #0d0f14;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  color: #7eb3ff;
+  font: 10px/1.4 "SF Mono", "Fira Mono", "Consolas", monospace;
+  margin: 0 0 8px;
+  max-height: 90px;
+  overflow-y: auto;
+  padding: 5px 7px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+#gve-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+#gv-exporter-panel button {
+  background: #2563eb;
+  border: 0;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font: 11px/1 system-ui, sans-serif;
+  font-weight: 650;
+  padding: 6px 10px;
+  min-height: 28px;
+  transition: background 0.15s;
+}
+
+#gv-exporter-panel button:hover {
+  background: #1d4ed8;
+}
+
+#gv-exporter-panel button:disabled {
+  background: #374151;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+#gve-stop {
+  background: #374151 !important;
+  color: #d1d5db !important;
+}
+
+#gve-stop:hover {
+  background: #4b5563 !important;
+}
+
+#gve-open-tab {
+  background: #065f46 !important;
+}
+
+#gve-open-tab:hover {
+  background: #047857 !important;
+}
+
+#gve-dl-images {
+  background: #7c3aed !important;
+}
+
+#gve-dl-images:hover {
+  background: #6d28d9 !important;
+}

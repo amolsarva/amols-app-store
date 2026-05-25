@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Google Voice Exporter</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <h1>Voice Exporter</h1>
+
+      <label for="format">Format</label>
+      <select id="format">
+        <option value="json">JSON</option>
+        <option value="csv">CSV</option>
+        <option value="txt">TXT</option>
+      </select>
+
+      <label for="filter">Filter text or phone</label>
+      <input id="filter" type="search" placeholder="718-602-4141">
+
+      <label class="check">
+        <input id="diffOnly" type="checkbox">
+        Only export messages newer than last run
+      </label>
+
+      <button id="export">Export open thread</button>
+      <button id="resume" class="secondary" style="display:none">Resume from checkpoint</button>
+      <button id="stop" class="secondary">Stop scrolling</button>
+
+      <p id="checkpoint-info" class="hint" style="display:none"></p>
+      <p id="status">Open a Google Voice conversation, then export.</p>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
