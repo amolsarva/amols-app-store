@@ -14,6 +14,17 @@ function log(...args) {
   if (logEl) logEl.textContent = logBuffer.slice(-20).join('\n');
 }
 
+function logSnapshot() {
+  return [
+    `Google Voice Exporter debug log`,
+    `Generated: ${new Date().toISOString()}`,
+    `URL: ${location.href}`,
+    `User agent: ${navigator.userAgent}`,
+    '',
+    ...logBuffer,
+  ].join('\n');
+}
+
 // ============================================================
 // State
 // ============================================================
@@ -40,6 +51,7 @@ function panel() {
     <div id="gve-buttons">
       <button type="button" id="gve-stop">Stop</button>
       <button type="button" id="gve-open-tab">Open in tab</button>
+      <button type="button" id="gve-debug-log">Save debug log</button>
       <button type="button" id="gve-dl-images" style="display:none"></button>
     </div>
   `;
@@ -54,6 +66,9 @@ function panel() {
     } else {
       setStatus('No export available yet — run an export first.');
     }
+  });
+  node.querySelector('#gve-debug-log').addEventListener('click', () => {
+    downloadRawText(logSnapshot(), `google-voice-exporter-debug-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`, 'text/plain');
   });
   document.documentElement.appendChild(node);
   return node;
@@ -300,17 +315,32 @@ function candidateMessageElements(root) {
 // ============================================================
 function extractAttachmentUrls(element) {
   const urls = [];
+  let skippedSmallImages = 0;
+  let skippedDataUrls = 0;
   for (const node of element.querySelectorAll('img[src], video[src], audio[src], a[href]')) {
     const url = node.src || node.currentSrc || node.href || '';
-    if (!url || url.startsWith('data:')) continue;
+    if (!url || url.startsWith('data:')) {
+      if (url.startsWith('data:')) skippedDataUrls++;
+      continue;
+    }
     if (node.tagName === 'IMG') {
       const w = node.naturalWidth || node.width || 999;
       const h = node.naturalHeight || node.height || 999;
-      if (w <= 40 || h <= 40) continue; // skip icons/avatars
+      if (w <= 40 || h <= 40) {
+        skippedSmallImages++;
+        continue; // skip icons/avatars
+      }
     }
     urls.push(url);
   }
-  return [...new Set(urls)];
+  const unique = [...new Set(urls)];
+  if (unique.length > 0 || skippedSmallImages > 0 || skippedDataUrls > 0) {
+    log(
+      `Attachment scan: kept=${unique.length}, skippedSmallImages=${skippedSmallImages}, skippedDataUrls=${skippedDataUrls}`,
+      unique.slice(0, 3).map((url) => url.slice(0, 120))
+    );
+  }
+  return unique;
 }
 
 // ============================================================
@@ -565,6 +595,24 @@ function makeFilename(format) {
 // ============================================================
 // Download + new-tab fallback
 // ============================================================
+function downloadRawText(content, fname, mime) {
+  try {
+    const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fname;
+    link.style.display = 'none';
+    document.documentElement.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 120_000);
+    log(`Debug/download text triggered: ${fname} (${content.length} bytes)`);
+  } catch (e) {
+    log('Raw text download failed:', e.message);
+  }
+}
+
 function openInNewTab(content, mime) {
   try {
     const blob = new Blob([content], { type: `${mime};charset=utf-8` });
@@ -694,6 +742,14 @@ async function startExport(options) {
     await downloadFile(toExport, options.format || 'json');
 
     const imageCount = allMessages.reduce((n, m) => n + m.attachments.length, 0);
+    const messagesWithImages = allMessages.filter((m) => m.attachments.length > 0).length;
+    log(`Attachment summary: ${imageCount} URL(s) across ${messagesWithImages} message(s)`);
+    if (messagesWithImages > 0) {
+      log('Attachment samples:', allMessages
+        .filter((m) => m.attachments.length > 0)
+        .slice(0, 5)
+        .map((m) => ({ id: m.id, timestamp: m.timestamp, attachments: m.attachments.slice(0, 3) })));
+    }
     const summary = `Exported ${toExport.length} messages from ${allMessages.length} total. ${imageCount} image(s) found.`;
     setStatus(summary);
     log(summary);

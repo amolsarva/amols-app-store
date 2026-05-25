@@ -21,10 +21,18 @@ Local Chrome extension for exporting the currently open Google Voice conversatio
 
 The extension scrolls upward until older messages stop loading, extracts visible message-like DOM nodes, dedupes them, and opens Chrome's save dialog.
 
+## Debugging a run
+
+- Watch the floating Google Voice Exporter panel in the lower-right corner of the Voice page.
+- Open Chrome DevTools on the Voice tab and filter the console for `[GV-Exporter]`.
+- Click **Save debug log** in the floating panel after a run. The log includes scroll passes, candidate counts, filter counts, attachment scans, image totals, and download status.
+- If downloads are blocked, click **Open in tab** in the floating panel to view the generated export directly.
+
 ## Notes
 
 - JSON is the most reliable format because it preserves attachments and metadata.
 - CSV is useful for spreadsheet filtering.
 - TXT is best for quick reading or pasting into email.
+- Image URLs are included in JSON/CSV/TXT. When images are found, the floating panel also shows a **Download image(s)** button that attempts to download the image files using your active Google Voice session.
 - Google Voice does not expose a stable public DOM contract, so the extractor uses heuristics. If Google changes the UI, update `content.js` selectors and parsing rules.
 - The `Only export messages newer than last run` option stores the last exported message ID in local Chrome extension storage for the current thread URL and filter.

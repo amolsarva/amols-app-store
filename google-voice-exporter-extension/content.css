@@ -92,6 +92,14 @@
   background: #047857 !important;
 }
 
+#gve-debug-log {
+  background: #4b5563 !important;
+}
+
+#gve-debug-log:hover {
+  background: #6b7280 !important;
+}
+
 #gve-dl-images {
   background: #7c3aed !important;
 }
