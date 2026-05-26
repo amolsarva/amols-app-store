@@ -1,12 +1,12 @@
 # cpu-guard
 
-A lightweight Python watchdog that monitors noisy macOS background processes and alerts you when they hog CPU — without killing anything automatically.
+A lightweight Python watchdog that stops noisy macOS background processes when they sustain high CPU.
 
 ## What it does
 
-macOS background daemons (Spotlight, iCloud, Photos analysis, Siri, etc.) periodically spike CPU and slow everything down. This script watches a configurable list of those processes and sends a macOS notification if any of them sustain high CPU usage for more than 30 seconds.
+macOS background daemons (Spotlight, iCloud, Photos analysis, Siri, etc.) periodically spike CPU and slow everything down. This script watches a configurable list of those processes and acts only when one of them sustains high CPU usage for more than 30 seconds.
 
-**Design philosophy:** alert first, act deliberately. The script never kills processes — it just tells you when something is misbehaving so you can decide what to do.
+Default behavior is practical and quiet: try `SIGTERM` first, wait briefly, then use `SIGKILL` only if the process refuses to exit. Notifications are sent only for actions and errors by default, not every threshold crossing.
 
 AI-related processes (Claude, OpenAI tools, OpenClaw) are explicitly excluded from flagging.
 
@@ -50,12 +50,27 @@ Edit the top of `cpu_guard.py`:
 
 ```python
 CPU_LIMIT = 80.0   # percent — threshold to start counting
-DURATION  = 30     # seconds sustained above limit before alerting
+DURATION  = 30     # seconds sustained above limit before acting
 INTERVAL  = 5      # seconds between checks
-NOTIFY    = True   # macOS notification on/off
+ACTION    = "kill" # kill, terminate, or notify
 ```
 
-Add or remove process names from the `WATCH` list to customize what's monitored.
+The LaunchAgent can be tuned with environment variables before running the installer:
+
+```bash
+CPU_GUARD_ACTION=terminate CPU_GUARD_NOTIFY_EVENTS=action,error bash cpu-guard-install.sh
+```
+
+Useful variables:
+
+- `CPU_GUARD_ACTION`: `kill` (default), `terminate`, or `notify`
+- `CPU_GUARD_NOTIFY_EVENTS`: comma-separated events; default is `action,error`
+- `CPU_GUARD_CPU_LIMIT`: CPU percentage threshold; default is `80`
+- `CPU_GUARD_DURATION`: sustained seconds above threshold; default is `30`
+- `CPU_GUARD_ACTION_COOLDOWN`: seconds before acting again on the same process name; default is `1800`
+- `CPU_GUARD_WATCH`: optional comma-separated replacement for the built-in watched process list
+
+Add or remove process names from the `WATCH` list to customize what can be acted on.
 
 ## Optional: shell aliases
 

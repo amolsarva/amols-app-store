@@ -13,7 +13,7 @@ Each script is self-contained in its own folder with a README explaining what it
 | [abbu-to-csv](./abbu-to-csv/) | Export Apple Contacts `.abbu` backup to CSV |
 | [bigfiles](./bigfiles/) | Find the biggest folders on your Mac and see if they're still in use |
 | [cleanicloud](./cleanicloud/) | Find and interactively delete iCloud duplicates and large files |
-| [cpu-guard](./cpu-guard/) | Monitor noisy macOS background processes and alert when they hog CPU |
+| [cpu-guard](./cpu-guard/) | Stop noisy macOS background processes when they sustain high CPU |
 | [drive-dedup](./drive-dedup/) | Scan an external drive for duplicates and consolidate into a clean folder structure |
 | [github-autopush](./github-autopush/) | Auto-push your git repos to GitHub in the background via LaunchAgent |
 | [google-voice-exporter-extension](./google-voice-exporter-extension/) | Export the open Google Voice conversation from Chrome as JSON, CSV, or TXT |

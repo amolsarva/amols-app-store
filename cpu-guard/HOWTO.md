@@ -1,172 +1,89 @@
-Here’s a clean, sane HOW TO guide you can save alongside your new script. This assumes you’ve put cpu_guard.py in a stable location like ~/bin/cpu_guard.py and you’re using your ~/cpuguard-env virtualenv.
+# CPU Guard How To
 
-Save this as:
-~/docs/automation/HOWTO_CPU_GUARD.md
+CPU Guard watches a short allowlist of noisy macOS background processes and acts when one stays above the CPU threshold long enough to matter.
 
-⸻
+## Install Or Reinstall
 
-CPU Guard (Safe Mode) — How To
+```bash
+cd ~/Documents/root/mac-scripts/cpu-guard
+bash cpu-guard-install.sh
+```
 
-A lightweight watchdog to monitor misbehaving macOS background processes and alert you when they hog CPU. This version is designed for human-in-the-loop control: observe first, intervene deliberately.
+The installer copies `cpu_guard.py` to `~/bin/cpu_guard.py`, writes the user LaunchAgent `~/Library/LaunchAgents/com.amol.cpu-guard.plist`, starts it immediately, and restarts it at login.
 
-Location & Assumptions
-	•	Script: ~/bin/cpu_guard.py
-	•	Python venv: ~/cpuguard-env
-	•	macOS Terminal (zsh)
+## Default Behavior
 
-Adjust paths if you placed files elsewhere.
+- Watches only names in `WATCH` inside `cpu_guard.py`.
+- Ignores Claude, OpenAI, and OpenClaw process names.
+- Acts after a watched process stays above 80% CPU for about 30 seconds.
+- Sends `SIGTERM` first.
+- Sends `SIGKILL` only if the process is still alive after the grace period.
+- Sends notifications only for actions and errors by default.
+- Logs a heartbeat once per hour instead of every polling loop.
 
-⸻
+## Check Status
 
-Start
-
-Run in the foreground (best for first use):
-
-~/cpuguard-env/bin/python ~/bin/cpu_guard.py
-
-Run in the background and keep logs:
-
-nohup ~/cpuguard-env/bin/python ~/bin/cpu_guard.py > /tmp/cpuguard.out 2>&1 &
-echo $! > /tmp/cpuguard.pid
-
-Tail logs:
-
-tail -f /tmp/cpuguard.out
-
-
-⸻
-
-Check if It’s Running
-
-Find the process:
-
-pgrep -a -f cpu_guard.py
-
-Or:
-
-ps aux | grep -i cpu_guard | grep -v grep
-
-If you used the background method:
-
-cat /tmp/cpuguard.pid
-
-
-⸻
-
-Pause / Resume (without killing)
-
-Pause the process:
-
-kill -STOP <PID>
-
-Resume:
-
-kill -CONT <PID>
-
-List background jobs (if launched in same Terminal session):
-
-jobs
-
-Bring a suspended job back:
-
-fg
-
-
-⸻
-
-Stop
-
-Graceful stop:
-
-kill <PID>
-
-One-line stop (if you used the pid file):
-
-kill "$(cat /tmp/cpuguard.pid)"
-
-Emergency stop (find and kill by name):
-
-pkill -f cpu_guard.py
-
-
-⸻
-
-Verify Nothing Is Running
-
+```bash
+launchctl print "gui/$(id -u)/com.amol.cpu-guard"
 pgrep -a -f cpu_guard.py || echo "cpu_guard not running"
+tail -f ~/Library/Logs/cpu-guard.out
+tail -f ~/Library/Logs/cpu-guard.err
+```
 
+## Stop Or Restart
 
-⸻
+```bash
+launchctl bootout "gui/$(id -u)" ~/Library/LaunchAgents/com.amol.cpu-guard.plist
+bash ~/Documents/root/mac-scripts/cpu-guard/cpu-guard-install.sh
+```
 
-Safety Defaults
-	•	Keep the script in monitor-only mode while tuning thresholds.
-	•	Avoid running from iCloud Drive. Sync + executables + background loops is a chaos triangle.
-	•	Prefer foreground runs first; background only after you’ve seen a few hours of normal behavior.
+## Safer Tuning Modes
 
-⸻
+Use notify-only mode while testing a new threshold:
 
-Common Tweaks
+```bash
+CPU_GUARD_ACTION=notify bash cpu-guard-install.sh
+```
 
-Change thresholds inside cpu_guard.py:
-	•	CPU_LIMIT: percentage considered “hogging”
-	•	DURATION: how long it must sustain high CPU before being flagged
-	•	INTERVAL: sampling cadence
+Use terminate-only mode if you want graceful exits but no forced kill:
 
-After editing:
+```bash
+CPU_GUARD_ACTION=terminate bash cpu-guard-install.sh
+```
 
-pkill -f cpu_guard.py
-~/cpuguard-env/bin/python ~/bin/cpu_guard.py
+Return to the default decisive mode:
 
+```bash
+CPU_GUARD_ACTION=kill CPU_GUARD_NOTIFY_EVENTS=action,error bash cpu-guard-install.sh
+```
 
-⸻
+## Configuration
 
-Make It Easy to Control (Optional Shell Aliases)
+The installer writes these values into the LaunchAgent environment:
 
-Add to ~/.zshrc:
+```bash
+CPU_GUARD_ACTION=kill
+CPU_GUARD_NOTIFY_EVENTS=action,error
+CPU_GUARD_CPU_LIMIT=80
+CPU_GUARD_DURATION=30
+CPU_GUARD_INTERVAL=5
+CPU_GUARD_ACTION_COOLDOWN=1800
+```
 
-alias cpuguard-start='nohup ~/cpuguard-env/bin/python ~/bin/cpu_guard.py > /tmp/cpuguard.out 2>&1 & echo $! > /tmp/cpuguard.pid'
-alias cpuguard-stop='pkill -f cpu_guard.py'
-alias cpuguard-status='pgrep -a -f cpu_guard.py || echo "cpu_guard not running"'
-alias cpuguard-log='tail -f /tmp/cpuguard.out'
+`CPU_GUARD_NOTIFY_EVENTS` accepts comma-separated event names. The useful values are:
 
-Reload:
+- `action`: notify when CPU Guard terminates, kills, or reports a hot process.
+- `error`: notify when macOS denies termination or another action error occurs.
+- `start`: notify when CPU Guard starts.
 
-source ~/.zshrc
+Set `CPU_GUARD_NOTIFY=0` to disable notifications completely.
 
-Then:
+Set `CPU_GUARD_WATCH=name1,name2` to replace the built-in watch list for a test or a narrower local setup.
 
-cpuguard-start
-cpuguard-status
-cpuguard-log
-cpuguard-stop
+## Manual Foreground Run
 
+```bash
+python3 -u cpu_guard.py
+```
 
-⸻
-
-Debugging
-
-If nothing prints CPU:
-
-pip show psutil
-
-Reinstall if needed:
-
-source ~/cpuguard-env/bin/activate
-pip install -U psutil
-deactivate
-
-If the script exits instantly:
-
-python -u ~/bin/cpu_guard.py
-
-The -u forces unbuffered output so crashes are visible.
-
-⸻
-
-Philosophy (short, practical)
-
-Treat watchdogs like a smoke alarm, not an automatic fire suppressant. Alerts preserve data; reflexive SIGKILL vaporizes it. The fastest system is the one that’s still intact tomorrow.
-
-⸻
-
-If you want, paste your current cpu_guard.py and I’ll align this HOWTO precisely to the flags and modes you’re using.
+Foreground mode is useful for watching log lines while tuning thresholds. Stop it with `Ctrl-C`.

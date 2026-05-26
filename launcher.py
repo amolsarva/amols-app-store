@@ -31,9 +31,8 @@ DESCRIPTIONS = {
     ),
     "cpu-guard": (
         "Stop runaway background processes",
-        "Watches your CPU in the background and alerts you when a process starts hogging it — things "
-        "like mds_stores, bird, or Spotlight going haywire. You can set a threshold and it'll notify "
-        "you (or kill the offender) instead of letting your fans spin up for hours unnoticed."
+        "Watches your CPU in the background and stops watched macOS background processes when they "
+        "stay hot too long, using quiet action-only notifications instead of repeated alerts."
     ),
     "drive-dedup": (
         "Deduplicate an external drive",

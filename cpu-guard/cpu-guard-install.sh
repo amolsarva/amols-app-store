@@ -38,6 +38,15 @@ cat > "$PLIST" <<PLIST
   </array>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>CPU_GUARD_ACTION</key><string>${CPU_GUARD_ACTION:-kill}</string>
+    <key>CPU_GUARD_NOTIFY_EVENTS</key><string>${CPU_GUARD_NOTIFY_EVENTS:-action,error}</string>
+    <key>CPU_GUARD_CPU_LIMIT</key><string>${CPU_GUARD_CPU_LIMIT:-80}</string>
+    <key>CPU_GUARD_DURATION</key><string>${CPU_GUARD_DURATION:-30}</string>
+    <key>CPU_GUARD_INTERVAL</key><string>${CPU_GUARD_INTERVAL:-5}</string>
+    <key>CPU_GUARD_ACTION_COOLDOWN</key><string>${CPU_GUARD_ACTION_COOLDOWN:-1800}</string>
+  </dict>
   <key>StandardOutPath</key><string>$LOG_DIR/cpu-guard.out</string>
   <key>StandardErrorPath</key><string>$LOG_DIR/cpu-guard.err</string>
 </dict>
@@ -53,3 +62,4 @@ echo "Installed $LABEL"
 echo "  Script: $INSTALL_SCRIPT"
 echo "  Plist:  $PLIST"
 echo "  Logs:   $LOG_DIR/cpu-guard.out and $LOG_DIR/cpu-guard.err"
+echo "  Mode:   ${CPU_GUARD_ACTION:-kill}; notifications: ${CPU_GUARD_NOTIFY_EVENTS:-action,error}"
