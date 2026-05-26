@@ -3,27 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mac Scripts - Amol Sarva</title>
+  <title>Amol's App Store - Mac Scripts</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     * { margin: 0; }
 
     :root {
-      --bg: #0e1116;
-      --panel: #151a22;
-      --panel-2: #1d2430;
-      --panel-3: #10151c;
+      --bg: #101010;
+      --panel: #171717;
+      --panel-2: #232323;
+      --panel-3: #141414;
       --text: #f4f7fb;
-      --muted: #9ba8b8;
-      --quiet: #667487;
-      --line: #2b3442;
-      --green: #44d17d;
-      --blue: #62a8ff;
-      --pink: #ff6fae;
-      --gold: #f0c45b;
-      --red: #ff705d;
-      --teal: #55d6c2;
-      --purple: #b993ff;
+      --muted: #a9b2bd;
+      --quiet: #77808c;
+      --line: #303030;
+      --green: #5bd186;
+      --blue: #79a7ff;
+      --pink: #f57aa7;
+      --gold: #e6bd57;
+      --red: #ef745f;
+      --teal: #63cfc3;
+      --purple: #b99cff;
       --shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
     }
 
@@ -32,8 +32,8 @@
     body {
       min-height: 100vh;
       background:
-        linear-gradient(180deg, rgba(98, 168, 255, 0.10), transparent 360px),
-        radial-gradient(circle at top left, rgba(68, 209, 125, 0.08), transparent 360px),
+        linear-gradient(180deg, rgba(230, 189, 87, 0.09), transparent 360px),
+        radial-gradient(circle at top left, rgba(91, 209, 134, 0.08), transparent 360px),
         var(--bg);
       color: var(--text);
       font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
@@ -394,13 +394,13 @@
 
     .app-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 14px;
       padding-bottom: 60px;
     }
 
     .app-card {
-      min-height: 276px;
+      min-height: 356px;
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -458,6 +458,17 @@
       color: #b9c4d3;
       font-size: 0.88rem;
       line-height: 1.48;
+    }
+
+    .app-card .summary {
+      color: #d1dae5;
+      flex: 0;
+    }
+
+    .app-card .story {
+      padding-top: 11px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      color: #9fabbb;
       flex: 1;
     }
 
@@ -559,7 +570,7 @@
         <span class="brand-mark">$</span>
         <span class="brand-text">
           <strong>Mac Scripts</strong>
-          <span>Amol Sarva's app store</span>
+          <span>small tools for shipping</span>
         </span>
       </a>
       <nav class="nav-actions" aria-label="Catalog links">
@@ -573,13 +584,13 @@
   <main>
     <section class="shell hero">
       <div class="hero-copy">
-        <span class="kicker">13 field-tested Mac utilities</span>
-        <h1>Mac Scripts</h1>
-        <p>Small, sharp tools for cleaning iCloud, exporting messages, finding disk waste, watching CPU, converting weird files, and keeping local repos synced without babysitting them.</p>
+        <span class="kicker">13 working notes turned into apps</span>
+        <h1>Amol's App Store</h1>
+        <p>I build companies, back founders, teach venture, and write about systems. These are the little machines I make for my own Mac when the work needs to move faster: preserve the record, clear the clutter, keep the computer awake, and ship while I sleep.</p>
         <div class="stats" aria-label="Catalog stats">
-          <div class="stat"><strong>13</strong><span>apps and scripts</span></div>
+          <div class="stat"><strong>13</strong><span>personal utilities</span></div>
           <div class="stat"><strong>0</strong><span>subscriptions</span></div>
-          <div class="stat"><strong>1</strong><span>git clone away</span></div>
+          <div class="stat"><strong>1998</strong><span>blog habit energy</span></div>
         </div>
       </div>
 
@@ -591,10 +602,10 @@
         <div class="terminal-body">
           <span class="line"><span class="prompt">amol@mac</span> <span class="cmd">git clone github.com/amolsarva/amols-app-store</span></span>
           <span class="line dim">Cloning into 'amols-app-store'...</span>
-          <span class="line ok">ready: screenshot-tidy</span>
-          <span class="line ok">ready: imessage-cleanup</span>
-          <span class="line ok">ready: github-autopush</span>
-          <span class="line warn">note: read each README before deleting files</span>
+          <span class="line ok">field note: tiny tools beat repeated chores</span>
+          <span class="line ok">ready: preserve the record</span>
+          <span class="line ok">ready: clear the clutter</span>
+          <span class="line warn">note: useful first, polished later</span>
           <span class="line"><span class="prompt">amol@mac</span> <span class="cmd">open launcher.command</span></span>
           <span class="line ok">launching local catalog...</span>
         </div>
@@ -613,7 +624,7 @@
       <div class="section-head">
         <div>
           <h2>Featured</h2>
-          <p>High-leverage scripts for messy Mac realities.</p>
+          <p>The ones that most directly match how I work: write it down, automate the repeat, move on.</p>
         </div>
       </div>
       <div class="featured-grid" id="featured"></div>
@@ -633,7 +644,7 @@
 
   <footer>
     <div class="shell">
-      <span>Built for people who would rather ship a tiny tool than open System Settings twice.</span>
+      <span>Built in the spirit of field notes: observe the mess, make the tool, keep moving.</span>
       <span><a href="https://amolsarva.com">amolsarva.com</a> / <a href="https://github.com/amolsarva/amols-app-store" target="_blank" rel="noopener">GitHub</a></span>
     </div>
   </footer>
@@ -648,7 +659,8 @@
         category: "storage",
         tags: ["storage", "icloud", "sqlite", "contacts"],
         color: "linear-gradient(135deg, #1f6feb, #7c3aed)",
-        summary: "Export attachments by sender, refresh previous archives, group multiple handles, and build per-person backup folders with transcript, media, DB, and manifest.",
+        summary: "Turns Messages chaos into per-person archives with transcript, media, database, and manifest.",
+        story: "For a founder, teacher, and obsessive note-keeper, old conversations are not junk. They are decisions, context, favors, family, and receipts. This gets them out of iCloud purgatory and into folders I can actually reason about.",
         path: "imessage-cleanup/imessage_cleanup.sh",
         featured: true
       },
@@ -660,7 +672,8 @@
         category: "productivity",
         tags: ["git", "launchagent", "sync"],
         color: "linear-gradient(135deg, #44d17d, #1f9a6a)",
-        summary: "A local manager and LaunchAgent that discovers GitHub repos, commits changes, pushes them, and keeps a readable history.",
+        summary: "Keeps local repos moving to GitHub with readable commits and a background LaunchAgent.",
+        story: "Ship While You Sleep, but for the pile of local experiments. I make a lot of small things; this keeps the good ones from living only on one laptop.",
         path: "github-autopush/",
         featured: true
       },
@@ -672,7 +685,8 @@
         category: "contacts",
         tags: ["chrome", "contacts", "export"],
         color: "linear-gradient(135deg, #ff6fae, #ff9f43)",
-        summary: "Load as a Chrome extension and export the open Google Voice thread as JSON, CSV, or TXT with debug logs and attachment URL capture.",
+        summary: "Exports the open Google Voice thread as JSON, CSV, or TXT with attachment URLs and logs.",
+        story: "The phone is still where half of real life happens: founders, contractors, school, family, buildings, quick deals. This makes those threads portable before they disappear behind somebody else's interface.",
         path: "google-voice-exporter-extension/",
         featured: true
       },
@@ -684,7 +698,8 @@
         category: "productivity",
         tags: ["chrome", "meet", "audio", "presentation"],
         color: "linear-gradient(135deg, #2dd4bf, #2563eb)",
-        summary: "Chrome extension for joining a Google Meet call while a controlled sidecar tab speaks an intro, plays audio, or runs the presentation work.",
+        summary: "Chrome extension for joining a Meet while a sidecar tab handles audio, intros, or presentation work.",
+        story: "Meetings should produce a useful artifact, not just another happening. This lets another tab do the repeatable work while I stay focused on the conversation.",
         path: "downloads/meet-tab-sidecar-extension.zip",
         featured: true
       },
@@ -696,7 +711,8 @@
         category: "productivity",
         tags: ["desktop", "launchagent", "screenshots"],
         color: "linear-gradient(135deg, #62a8ff, #55d6c2)",
-        summary: "Moves screenshots off the Desktop into a Screenshots folder as soon as they appear, then keeps the setting alive across logins.",
+        summary: "Moves screenshots off the Desktop into a real Screenshots folder and keeps the habit alive.",
+        story: "Screenshots are field notes from the day: a chart, a bug, a building, a founder deck. They should be findable, not sprinkled across the Desktop like confetti.",
         path: "screenshot-tidy/"
       },
       {
@@ -707,7 +723,8 @@
         category: "storage",
         tags: ["icloud", "duplicates", "large-files"],
         color: "linear-gradient(135deg, #55d6c2, #2f80ed)",
-        summary: "Hashes iCloud files to find duplicates, groups big suspicious clusters, and asks before removing anything.",
+        summary: "Finds iCloud duplicates and suspiciously large clusters, then asks before removing anything.",
+        story: "The cloud is useful until it becomes a rent-seeking attic. This is for the recurring moment when I want the machine to show me the mess plainly before I clean it.",
         path: "cleanicloud/cleanicloud.sh"
       },
       {
@@ -718,7 +735,8 @@
         category: "storage",
         tags: ["disk", "audit", "archive"],
         color: "linear-gradient(135deg, #f0c45b, #ff705d)",
-        summary: "Finds heavy folders under common home directories and checks recent reads/writes before you decide what to archive.",
+        summary: "Finds heavy folders and checks recent activity before I decide what to archive.",
+        story: "A Mac accumulates the sediment of every company, course, podcast, trip, and project. Bigfiles is the map before the excavation.",
         path: "bigfiles/bigfiles.sh"
       },
       {
@@ -730,6 +748,7 @@
         tags: ["cpu", "watchdog", "python"],
         color: "linear-gradient(135deg, #ff705d, #b993ff)",
         summary: "Stops known noisy macOS background processes after sustained high CPU, with quiet action-only notifications.",
+        story: "My computer should spend cycles on writing, calls, code, and research, not an invisible daemon melting the fan. This is a small guardrail for flow.",
         path: "cpu-guard/cpu_guard.py"
       },
       {
@@ -740,7 +759,8 @@
         category: "storage",
         tags: ["external-drive", "duplicates", "python"],
         color: "linear-gradient(135deg, #b993ff, #62a8ff)",
-        summary: "Two-phase scanner and consolidation planner for external drives, with resume checkpoints and optional AI categorization.",
+        summary: "Scans external drives for duplicates and plans a clean consolidation with checkpoints.",
+        story: "Old drives are archaeological sites. The goal is not just delete duplicates; it is recover the useful record without losing the weird valuable thing.",
         path: "drive-dedup/"
       },
       {
@@ -751,7 +771,8 @@
         category: "migration",
         tags: ["migration", "launchagents", "dotfiles"],
         color: "linear-gradient(135deg, #cbd5e1, #64748b)",
-        summary: "Bundles LaunchAgents, shell config, common automation folders, brew lists, diagnostics, and a restore installer for the next Mac.",
+        summary: "Bundles LaunchAgents, shell config, automation folders, brew lists, diagnostics, and restore steps.",
+        story: "I have rebuilt the same working environment across too many machines. This turns a Mac migration from oral tradition into an actual written system.",
         path: "mac-migrator/mac_background_migrator.sh"
       },
       {
@@ -762,7 +783,8 @@
         category: "contacts",
         tags: ["contacts", "csv", "backup"],
         color: "linear-gradient(135deg, #44d17d, #62a8ff)",
-        summary: "Turns an Apple Contacts .abbu backup into a readable CSV by locating the real Contacts database inside the package.",
+        summary: "Turns an Apple Contacts .abbu backup into a readable CSV by finding the real database inside.",
+        story: "The network is the work: founders, students, investors, neighbors, builders. Contacts should be inspectable data, not a sealed Apple bundle.",
         path: "abbu-to-csv/abbu_to_csv.sh"
       },
       {
@@ -773,7 +795,8 @@
         category: "contacts",
         tags: ["gmail", "sqlite", "analysis"],
         color: "linear-gradient(135deg, #f0c45b, #44d17d)",
-        summary: "Archives Gmail headers locally and builds relationship/activity reports without storing message bodies.",
+        summary: "Archives Gmail headers locally and builds relationship and activity reports without message bodies.",
+        story: "I like systems that reveal patterns without making a privacy bonfire. This shows the shape of a network while leaving the actual correspondence alone.",
         path: "personalcontacts-analyzer/"
       },
       {
@@ -785,6 +808,7 @@
         tags: ["pdf", "excel", "conversion"],
         color: "linear-gradient(135deg, #ff9f43, #62a8ff)",
         summary: "Extracts PDF text with poppler and writes a quick Excel workbook for rough table recovery.",
+        story: "Somebody always sends the numbers as a PDF. This is the little bridge from inert document to spreadsheet-shaped thing I can sort, inspect, and use.",
         path: "pdf-to-xls/pdftoxls.sh"
       }
     ];
@@ -830,14 +854,14 @@
       featuredNode.innerHTML = apps.filter(app => app.featured).map(app => `
         <article class="feature" style="--tone:${app.color}" data-icon="${app.icon}">
           <h3>${app.name}</h3>
-          <p>${app.summary}</p>
+          <p>${app.story || app.summary}</p>
           <a href="${readmeUrl(app)}" target="_blank" rel="noopener">Open</a>
         </article>
       `).join("");
     }
 
     function appMatches(app, query) {
-      const haystack = [app.name, app.slug, app.category, app.summary, ...app.tags].join(" ").toLowerCase();
+      const haystack = [app.name, app.slug, app.category, app.summary, app.story || "", ...app.tags].join(" ").toLowerCase();
       const categoryOk = activeCategory === "all" || app.category === activeCategory || app.tags.includes(activeCategory);
       return categoryOk && haystack.includes(query);
     }
@@ -856,7 +880,8 @@
               <span>${app.slug}</span>
             </div>
           </div>
-          <p>${app.summary}</p>
+          <p class="summary">${app.summary}</p>
+          <p class="story">${app.story}</p>
           <div class="chips">${app.tags.map(tag => `<span class="chip">${tag}</span>`).join("")}</div>
           <div class="card-actions">
             <a class="mini-btn get" href="${getUrl(app)}">Get</a>
