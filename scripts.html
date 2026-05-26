@@ -3,466 +3,882 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mac Scripts — Amol Sarva</title>
+  <title>Mac Scripts - Amol Sarva</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; }
+    * { margin: 0; }
 
     :root {
-      --bg: #fafaf8;
-      --text: #1a1a18;
-      --muted: #6b6b62;
-      --accent: #2d6a4f;
-      --accent-light: #e8f5ee;
-      --border: #e2e2da;
-      --card-bg: #ffffff;
-      --tag-bg: #f0f0ea;
-      --tag-text: #4a4a42;
-      --link: #2d6a4f;
-      --link-hover: #1b4332;
+      --bg: #0e1116;
+      --panel: #151a22;
+      --panel-2: #1d2430;
+      --panel-3: #10151c;
+      --text: #f4f7fb;
+      --muted: #9ba8b8;
+      --quiet: #667487;
+      --line: #2b3442;
+      --green: #44d17d;
+      --blue: #62a8ff;
+      --pink: #ff6fae;
+      --gold: #f0c45b;
+      --red: #ff705d;
+      --teal: #55d6c2;
+      --purple: #b993ff;
+      --shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
     }
 
+    html { scroll-behavior: smooth; }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-      background: var(--bg);
+      min-height: 100vh;
+      background:
+        linear-gradient(180deg, rgba(98, 168, 255, 0.10), transparent 360px),
+        radial-gradient(circle at top left, rgba(68, 209, 125, 0.08), transparent 360px),
+        var(--bg);
       color: var(--text);
-      line-height: 1.6;
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+      line-height: 1.5;
       font-size: 16px;
     }
 
-    a { color: var(--link); text-decoration: none; }
-    a:hover { color: var(--link-hover); text-decoration: underline; }
+    a { color: inherit; text-decoration: none; }
+    button, input { font: inherit; }
 
-    /* ── Header ── */
-    .site-header {
-      border-bottom: 1px solid var(--border);
-      padding: 1.25rem 0;
-      background: var(--card-bg);
+    .shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
     }
 
-    .site-header .inner {
-      max-width: 860px;
-      margin: 0 auto;
-      padding: 0 1.5rem;
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(14, 17, 22, 0.86);
+      backdrop-filter: blur(18px);
+    }
+
+    .topbar .shell {
+      min-height: 62px;
       display: flex;
       align-items: center;
-      gap: 1rem;
+      justify-content: space-between;
+      gap: 18px;
     }
 
-    .site-header .name {
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      background: #10151c;
+      color: var(--green);
+      font: 700 18px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .brand-text strong {
+      display: block;
       font-size: 0.95rem;
-      font-weight: 500;
-      color: var(--muted);
+      letter-spacing: 0;
     }
 
-    .site-header .name a { color: var(--muted); }
-    .site-header .name a:hover { color: var(--text); text-decoration: none; }
-
-    .site-header .sep { color: var(--border); }
-
-    /* ── Hero ── */
-    .hero {
-      max-width: 860px;
-      margin: 0 auto;
-      padding: 3.5rem 1.5rem 2.5rem;
+    .brand-text span {
+      display: block;
+      color: var(--quiet);
+      font-size: 0.78rem;
+      white-space: nowrap;
     }
 
-    .hero h1 {
-      font-size: 2.1rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      line-height: 1.2;
-      margin-bottom: 1rem;
-    }
-
-    .hero p {
-      font-size: 1.05rem;
-      color: var(--muted);
-      max-width: 560px;
-      line-height: 1.7;
-      margin-bottom: 1.5rem;
-    }
-
-    .hero-actions {
+    .nav-actions {
       display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
       align-items: center;
+      gap: 10px;
     }
 
     .btn {
       display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
-      padding: 0.55rem 1.1rem;
-      border-radius: 6px;
-      font-size: 0.9rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-      border: 1px solid var(--accent);
-    }
-    .btn-primary:hover { background: var(--link-hover); color: #fff; text-decoration: none; }
-
-    .btn-secondary {
-      background: var(--card-bg);
+      justify-content: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 0 14px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
       color: var(--text);
-      border: 1px solid var(--border);
-    }
-    .btn-secondary:hover { border-color: #aaa; text-decoration: none; }
-
-    /* ── Filters ── */
-    .filters {
-      max-width: 860px;
-      margin: 0 auto;
-      padding: 0 1.5rem 1.5rem;
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-
-    .filter-btn {
-      padding: 0.3rem 0.8rem;
-      border-radius: 20px;
-      border: 1px solid var(--border);
-      background: var(--card-bg);
-      color: var(--muted);
-      font-size: 0.82rem;
+      background: rgba(255, 255, 255, 0.06);
       cursor: pointer;
-      transition: all 0.12s;
-    }
-    .filter-btn:hover, .filter-btn.active {
-      background: var(--accent);
-      color: #fff;
-      border-color: var(--accent);
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+      white-space: nowrap;
     }
 
-    /* ── Grid ── */
-    .grid {
-      max-width: 860px;
-      margin: 0 auto;
-      padding: 0 1.5rem 4rem;
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(255, 255, 255, 0.24);
+      background: rgba(255, 255, 255, 0.10);
+    }
+
+    .btn.primary {
+      color: #08100c;
+      border-color: rgba(68, 209, 125, 0.5);
+      background: var(--green);
+      font-weight: 700;
+    }
+
+    .hero {
+      padding: 42px 0 22px;
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
+      grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr);
+      gap: 28px;
+      align-items: stretch;
     }
 
-    @media (max-width: 620px) {
-      .grid { grid-template-columns: 1fr; }
-      .hero h1 { font-size: 1.6rem; }
-    }
-
-    /* ── Cards ── */
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 1.4rem 1.5rem 1.2rem;
+    .hero-copy {
+      min-height: 320px;
       display: flex;
       flex-direction: column;
-      gap: 0.6rem;
-      transition: border-color 0.15s, box-shadow 0.15s;
-    }
-    .card:hover {
-      border-color: #c0c0b8;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      justify-content: center;
+      gap: 22px;
     }
 
-    .card-icon {
-      font-size: 1.5rem;
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      color: var(--green);
+      border: 1px solid rgba(68, 209, 125, 0.28);
+      border-radius: 999px;
+      background: rgba(68, 209, 125, 0.08);
+      padding: 7px 11px;
+      font: 700 0.78rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: clamp(2.6rem, 7vw, 6.2rem);
+      line-height: 0.94;
+      letter-spacing: 0;
+      max-width: 720px;
+    }
+
+    .hero-copy p {
+      max-width: 640px;
+      color: #c4cedb;
+      font-size: clamp(1rem, 2vw, 1.18rem);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      max-width: 560px;
+    }
+
+    .stat {
+      min-height: 74px;
+      padding: 13px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 1.3rem;
       line-height: 1;
-      margin-bottom: 0.1rem;
     }
 
-    .card-title {
-      font-size: 1rem;
-      font-weight: 650;
+    .stat span {
+      display: block;
+      margin-top: 8px;
+      color: var(--quiet);
+      font-size: 0.78rem;
+    }
+
+    .terminal {
+      min-height: 320px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      background: #090c10;
+      box-shadow: var(--shadow);
+    }
+
+    .terminal-bar {
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: #121820;
+      color: var(--quiet);
+      font: 0.78rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .dots {
+      display: flex;
+      gap: 7px;
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: var(--red);
+    }
+    .dot:nth-child(2) { background: var(--gold); }
+    .dot:nth-child(3) { background: var(--green); }
+
+    .terminal-body {
+      padding: 18px;
+      font: 0.88rem/1.72 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: #d8e1ec;
+    }
+
+    .line { display: block; min-height: 1.72em; }
+    .prompt { color: var(--green); }
+    .cmd { color: #ffffff; }
+    .ok { color: var(--teal); }
+    .warn { color: var(--gold); }
+    .dim { color: #738195; }
+
+    .toolbar {
+      margin: 8px 0 22px;
+      padding: 14px;
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 8px;
+      background: rgba(21, 26, 34, 0.92);
+      box-shadow: 0 12px 42px rgba(0, 0, 0, 0.18);
+    }
+
+    .search {
+      position: relative;
+      min-width: 0;
+    }
+
+    .search input {
+      width: 100%;
+      height: 46px;
+      padding: 0 14px 0 42px;
       color: var(--text);
-      letter-spacing: -0.01em;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      outline: 0;
+      background: #10151c;
     }
 
-    .card-desc {
-      font-size: 0.875rem;
-      color: var(--muted);
-      line-height: 1.55;
+    .search input:focus { border-color: rgba(98, 168, 255, 0.72); }
+
+    .search span {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--quiet);
+    }
+
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .filter {
+      height: 34px;
+      padding: 0 12px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      color: #cbd5e1;
+      background: #10151c;
+      cursor: pointer;
+    }
+
+    .filter.active,
+    .filter:hover {
+      color: #08100c;
+      border-color: var(--green);
+      background: var(--green);
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 18px;
+      margin: 28px 0 14px;
+    }
+
+    .section-head h2 {
+      font-size: 1.28rem;
+      letter-spacing: 0;
+    }
+
+    .section-head p {
+      color: var(--quiet);
+      font-size: 0.9rem;
+    }
+
+    .featured-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .feature {
+      position: relative;
+      min-height: 180px;
+      padding: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--tone), rgba(255, 255, 255, 0.06));
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
+    }
+
+    .feature::after {
+      content: attr(data-icon);
+      position: absolute;
+      right: 18px;
+      bottom: -8px;
+      font-size: 5rem;
+      opacity: 0.22;
+      filter: saturate(1.2);
+    }
+
+    .feature h3 {
+      position: relative;
+      max-width: 240px;
+      font-size: 1.28rem;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .feature p {
+      position: relative;
+      margin-top: 10px;
+      max-width: 320px;
+      color: rgba(255, 255, 255, 0.78);
+      font-size: 0.9rem;
+    }
+
+    .feature a {
+      position: absolute;
+      left: 20px;
+      bottom: 18px;
+      display: inline-flex;
+      min-height: 32px;
+      align-items: center;
+      padding: 0 11px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.22);
+      font-weight: 700;
+      font-size: 0.82rem;
+    }
+
+    .app-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      padding-bottom: 60px;
+    }
+
+    .app-card {
+      min-height: 276px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 15px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.028));
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+
+    .app-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(255, 255, 255, 0.22);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+    }
+
+    .app-top {
+      display: grid;
+      grid-template-columns: 54px minmax(0, 1fr);
+      gap: 12px;
+      align-items: center;
+    }
+
+    .icon {
+      width: 54px;
+      height: 54px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      background: var(--icon-bg);
+      font-size: 1.75rem;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    }
+
+    .app-title {
+      min-width: 0;
+    }
+
+    .app-title h3 {
+      overflow-wrap: anywhere;
+      font-size: 1rem;
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    .app-title span {
+      display: block;
+      margin-top: 5px;
+      color: var(--quiet);
+      font-size: 0.78rem;
+    }
+
+    .app-card p {
+      color: #b9c4d3;
+      font-size: 0.88rem;
+      line-height: 1.48;
       flex: 1;
     }
 
-    .card-tags {
+    .chips {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.3rem;
-      margin-top: 0.2rem;
+      gap: 6px;
     }
 
-    .tag {
-      background: var(--tag-bg);
-      color: var(--tag-text);
-      font-size: 0.72rem;
-      padding: 0.15rem 0.55rem;
-      border-radius: 4px;
-      font-weight: 500;
-      letter-spacing: 0.01em;
+    .chip {
+      padding: 3px 7px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 999px;
+      color: #c6d1df;
+      background: rgba(255, 255, 255, 0.045);
+      font: 0.72rem/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
 
-    .card-links {
-      display: flex;
-      gap: 1rem;
-      margin-top: 0.4rem;
+    .card-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .mini-btn {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      color: #dce6f3;
+      background: #10151c;
+      font-weight: 700;
       font-size: 0.82rem;
     }
 
-    .card-links a {
-      color: var(--accent);
-      display: inline-flex;
-      align-items: center;
-      gap: 0.25rem;
+    .mini-btn.get {
+      color: #08100c;
+      background: #f4f7fb;
     }
-    .card-links a:hover { color: var(--link-hover); }
 
-    /* ── Footer ── */
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 2rem 1.5rem;
-      text-align: center;
-      color: var(--muted);
-      font-size: 0.85rem;
+    .mini-btn:hover {
+      border-color: rgba(255, 255, 255, 0.28);
     }
-    footer a { color: var(--muted); }
-    footer a:hover { color: var(--text); }
+
+    .empty {
+      display: none;
+      padding: 36px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 8px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.04);
+      text-align: center;
+    }
+
+    footer {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 26px 0 38px;
+      color: var(--quiet);
+      font-size: 0.86rem;
+    }
+
+    footer .shell {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    footer a { color: #cbd5e1; }
+
+    @media (max-width: 980px) {
+      .hero { grid-template-columns: 1fr; }
+      .hero-copy { min-height: auto; }
+      .featured-grid { grid-template-columns: 1fr; }
+      .app-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .toolbar { grid-template-columns: 1fr; }
+      .filters { justify-content: flex-start; }
+    }
+
+    @media (max-width: 620px) {
+      .shell { width: min(100% - 22px, 1180px); }
+      .topbar .shell { align-items: flex-start; flex-direction: column; padding: 12px 0; }
+      .nav-actions { width: 100%; overflow-x: auto; padding-bottom: 2px; }
+      .hero { padding-top: 28px; }
+      .stats { grid-template-columns: 1fr; }
+      .app-grid { grid-template-columns: 1fr; }
+      .terminal-body { font-size: 0.78rem; }
+      .card-actions { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
+  <header class="topbar">
+    <div class="shell">
+      <a class="brand" href="https://amolsarva.com">
+        <span class="brand-mark">$</span>
+        <span class="brand-text">
+          <strong>Mac Scripts</strong>
+          <span>Amol Sarva's app store</span>
+        </span>
+      </a>
+      <nav class="nav-actions" aria-label="Catalog links">
+        <a class="btn" href="#catalog">Browse</a>
+        <a class="btn" href="https://github.com/amolsarva/amols-app-store/archive/refs/heads/main.zip">Download</a>
+        <a class="btn primary" href="https://github.com/amolsarva/amols-app-store" target="_blank" rel="noopener">GitHub</a>
+      </nav>
+    </div>
+  </header>
 
-<header class="site-header">
-  <div class="inner">
-    <span class="name"><a href="https://amolsarva.com">Amol Sarva</a></span>
-    <span class="sep">/</span>
-    <span class="name">Mac Scripts</span>
-  </div>
-</header>
+  <main>
+    <section class="shell hero">
+      <div class="hero-copy">
+        <span class="kicker">13 field-tested Mac utilities</span>
+        <h1>Mac Scripts</h1>
+        <p>Small, sharp tools for cleaning iCloud, exporting messages, finding disk waste, watching CPU, converting weird files, and keeping local repos synced without babysitting them.</p>
+        <div class="stats" aria-label="Catalog stats">
+          <div class="stat"><strong>13</strong><span>apps and scripts</span></div>
+          <div class="stat"><strong>0</strong><span>subscriptions</span></div>
+          <div class="stat"><strong>1</strong><span>git clone away</span></div>
+        </div>
+      </div>
 
-<section class="hero">
-  <h1>Scripts to make your Mac life easier</h1>
-  <p>
-    A collection of shell scripts and Python tools built up over time for real everyday use —
-    cleaning up iCloud, migrating between Macs, keeping screenshots organized, monitoring
-    runaway processes, and more.
-  </p>
-  <div class="hero-actions">
-    <a class="btn btn-primary" href="https://github.com/amolsarva/amols-app-store" target="_blank">
-      ↗ View on GitHub
-    </a>
-    <a class="btn btn-secondary" href="https://github.com/amolsarva/amols-app-store/archive/refs/heads/main.zip">
-      ↓ Download all scripts
-    </a>
-  </div>
-</section>
+      <aside class="terminal" aria-label="Install preview">
+        <div class="terminal-bar">
+          <div class="dots" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+          <span>~/mac-scripts/app-store</span>
+        </div>
+        <div class="terminal-body">
+          <span class="line"><span class="prompt">amol@mac</span> <span class="cmd">git clone github.com/amolsarva/amols-app-store</span></span>
+          <span class="line dim">Cloning into 'amols-app-store'...</span>
+          <span class="line ok">ready: screenshot-tidy</span>
+          <span class="line ok">ready: imessage-cleanup</span>
+          <span class="line ok">ready: github-autopush</span>
+          <span class="line warn">note: read each README before deleting files</span>
+          <span class="line"><span class="prompt">amol@mac</span> <span class="cmd">open launcher.command</span></span>
+          <span class="line ok">launching local catalog...</span>
+        </div>
+      </aside>
+    </section>
 
-<div class="filters">
-  <button class="filter-btn active" onclick="filterCards('all', this)">All</button>
-  <button class="filter-btn" onclick="filterCards('storage', this)">Storage</button>
-  <button class="filter-btn" onclick="filterCards('productivity', this)">Productivity</button>
-  <button class="filter-btn" onclick="filterCards('migration', this)">Migration</button>
-  <button class="filter-btn" onclick="filterCards('contacts', this)">Contacts</button>
-  <button class="filter-btn" onclick="filterCards('monitoring', this)">Monitoring</button>
-</div>
+    <section class="shell toolbar" aria-label="Search and filters">
+      <label class="search">
+        <span aria-hidden="true">⌕</span>
+        <input id="search" type="search" placeholder="Search scripts, jobs, tags..." autocomplete="off" />
+      </label>
+      <div class="filters" id="filters"></div>
+    </section>
 
-<div class="grid" id="card-grid">
+    <section class="shell">
+      <div class="section-head">
+        <div>
+          <h2>Featured</h2>
+          <p>High-leverage scripts for messy Mac realities.</p>
+        </div>
+      </div>
+      <div class="featured-grid" id="featured"></div>
+    </section>
 
-  <div class="card" data-tags="storage contacts">
-    <div class="card-icon">📇</div>
-    <div class="card-title">abbu-to-csv</div>
-    <div class="card-desc">Export your Apple Contacts <code>.abbu</code> backup to CSV — no third-party apps, no iCloud required. Just Python 3.</div>
-    <div class="card-tags">
-      <span class="tag">storage</span>
-      <span class="tag">contacts</span>
-      <span class="tag">shell</span>
-    </div>
-    <div class="card-links">
-      <a href="https://github.com/amolsarva/amols-app-store/tree/main/abbu-to-csv" target="_blank">↗ README</a>
-      <a href="https://raw.githubusercontent.com/amolsarva/amols-app-store/main/abbu-to-csv/abbu_to_csv.sh">↓ Download</a>
-    </div>
-  </div>
+    <section class="shell" id="catalog">
+      <div class="section-head">
+        <div>
+          <h2>All Apps</h2>
+          <p id="result-count">13 available</p>
+        </div>
+      </div>
+      <div class="app-grid" id="apps"></div>
+      <div class="empty" id="empty">No scripts match that search.</div>
+    </section>
+  </main>
 
-  <div class="card" data-tags="storage">
-    <div class="card-icon">📦</div>
-    <div class="card-title">bigfiles</div>
-    <div class="card-desc">Find your Mac's biggest folders and see whether they're actively used or safe to archive — with colored verdicts for each.</div>
-    <div class="card-tags">
-      <span class="tag">storage</span>
-      <span class="tag">shell</span>
+  <footer>
+    <div class="shell">
+      <span>Built for people who would rather ship a tiny tool than open System Settings twice.</span>
+      <span><a href="https://amolsarva.com">amolsarva.com</a> / <a href="https://github.com/amolsarva/amols-app-store" target="_blank" rel="noopener">GitHub</a></span>
     </div>
-    <div class="card-links">
-      <a href="https://github.com/amolsarva/amols-app-store/tree/main/bigfiles" target="_blank">↗ README</a>
-      <a href="https://raw.githubusercontent.com/amolsarva/amols-app-store/main/bigfiles/bigfiles.sh">↓ Download</a>
-    </div>
-  </div>
+  </footer>
 
-  <div class="card" data-tags="storage">
-    <div class="card-icon">☁️</div>
-    <div class="card-title">cleanicloud</div>
-    <div class="card-desc">Interactively find and remove iCloud Drive duplicates and large file clusters — asks before deleting anything.</div>
-    <div class="card-tags">
-      <span class="tag">storage</span>
-      <span class="tag">icloud</span>
-      <span class="tag">shell</span>
-    </div>
-    <div class="card-links">
-      <a href="https://github.com/amolsarva/amols-app-store/tree/main/cleanicloud" target="_blank">↗ README</a>
-      <a href="https://raw.githubusercontent.com/amolsarva/amols-app-store/main/cleanicloud/cleanicloud.sh">↓ Download</a>
-    </div>
-  </div>
-
-  <div class="card" data-tags="monitoring">
-    <div class="card-icon">🔥</div>
-    <div class="card-title">cpu-guard</div>
-    <div class="card-desc">Watches noisy macOS background daemons (Spotlight, iCloud, Photos) and sends a notification when any of them hogs CPU. Never kills anything automatically.</div>
-    <div class="card-tags">
-      <span class="tag">monitoring</span>
-      <span class="tag">python</span>
-    </div>
-    <div class="card-links">
-      <a href="https://github.com/amolsarva/amols-app-store/tree/main/cpu-guard" target="_blank">↗ README</a>
-      <a href="https://raw.githubusercontent.com/amolsarva/amols-app-store/main/cpu-guard/cpu_guard.py">↓ Download</a>
-    </div>
-  </div>
-
-  <div class="card" data-tags="storage">
-    <div class="card-icon">💿</div>
-    <div class="card-title">drive-dedup</div>
-    <div class="card-desc">Two-phase Python toolkit: scan an external drive for duplicates, then consolidate everything into a clean dated folder structure. Optionally uses Claude AI to categorize ambiguous files.</div>
-    <div class="card-tags">
-      <span class="tag">storage</span>
-      <span class="tag">python</span>
-      <span class="tag">ai-optional</span>
-    </div>
-    <div class="card-links">
-      <a href="https://github.com/amolsarva/amols-app-store/tree/main/drive-dedup" target="_blank">↗ README</a>
-      <a href="https://github.com/amolsarva/amols-app-store/tree/main/drive-dedup" target="_blank">↓ Download folder</a>
-    </div>
-  </div>
-
-  <div class="card" data-tags="productivity">
-    <div class="card-icon">🔄</div>
-    <div class="card-title">github-autopush</div>
-    <div class="card-desc">Auto-push your git repos to GitHub in the background via a macOS LaunchAgent. Interactive manager to toggle repos on/off and view sync history.</div>
-    <div class="card-tags">
-      <span class="tag">productivity</span>
-      <span class="tag">git</span>
-      <span class="tag">shell</span>
-    </div>
-    <div class="card-links">
-      <a href="https://github.com/amolsarva/amols-app-store/tree/main/github-autopush" target="_blank">↗ README</a>
-      <a href="https://github.com/amolsarva/amols-app-store/tree/main/github-autopush" target="_blank">↓ Download folder</a>
-    </div>
-  </div>
-
-  <div class="card" data-tags="storage contacts">
-    <div class="card-icon">💬</div>
-    <div class="card-title">imessage-cleanup <span style="font-size:0.7em;color:var(--muted);font-weight:400;">v2.7.1</span></div>
-    <div class="card-desc">Extract iMessage photo &amp; video attachments by sender, browse every conversation handle in a high-contrast TUI (with merged handles and last-message preview as a memory prompt for unsaved numbers), and export restartable per-person archive folders containing a SQLite DB, readable transcript, media, metadata, and an attachment manifest. Menu 8 remembers prior exports, refreshes existing archive folders in place, keeps an archive history store, maintains dated run-log files in repo folders, and supports grouped-contact folders that keep multiple phones/email for one person together. Per-contact exports land in a user-chosen backup folder (default <code>~/Documents/root/imessage-backups</code>) via a built-in folder navigator. Plus optional iCloud space reclaim.</div>
-    <div class="card-tags">
-      <span class="tag">storage</span>
-      <span class="tag">icloud</span>
-      <span class="tag">shell</span>
-      <span class="tag">sqlite</span>
-      <span class="tag">contacts</span>
-    </div>
-    <div class="card-links">
-      <a href="https://github.com/amolsarva/amols-app-store/tree/main/imessage-cleanup" target="_blank">↗ README</a>
-      <a href="https://raw.githubusercontent.com/amolsarva/amols-app-store/main/imessage-cleanup/imessage_cleanup.sh">↓ Download</a>
-    </div>
-  </div>
-
-  <div class="card" data-tags="migration">
-    <div class="card-icon">🖥️</div>
-    <div class="card-title">mac-migrator</div>
-    <div class="card-desc">Bundle your Mac's LaunchAgents, dotfiles, SSH keys, shell config, and app settings into a portable archive — then restore it cleanly on a new machine.</div>
-    <div class="card-tags">
-      <span class="tag">migration</span>
-      <span class="tag">shell</span>
-    </div>
-    <div class="card-links">
-      <a href="https://github.com/amolsarva/amols-app-store/tree/main/mac-migrator" target="_blank">↗ README</a>
-      <a href="https://raw.githubusercontent.com/amolsarva/amols-app-store/main/mac-migrator/mac_background_migrator.sh">↓ Download</a>
-    </div>
-  </div>
-
-  <div class="card" data-tags="productivity">
-    <div class="card-icon">📄</div>
-    <div class="card-title">pdf-to-xls</div>
-    <div class="card-desc">Convert a PDF to an Excel spreadsheet in one command. Auto-installs its own dependencies (poppler, pandas) via Homebrew.</div>
-    <div class="card-tags">
-      <span class="tag">productivity</span>
-      <span class="tag">shell</span>
-    </div>
-    <div class="card-links">
-      <a href="https://github.com/amolsarva/amols-app-store/tree/main/pdf-to-xls" target="_blank">↗ README</a>
-      <a href="https://raw.githubusercontent.com/amolsarva/amols-app-store/main/pdf-to-xls/pdftoxls.sh">↓ Download</a>
-    </div>
-  </div>
-
-  <div class="card" data-tags="contacts">
-    <div class="card-icon">📊</div>
-    <div class="card-title">personalcontacts-analyzer</div>
-    <div class="card-desc">Archive Gmail headers locally in SQLite and analyze your communication patterns — who you email, how often, on what topics — without ever reading message bodies.</div>
-    <div class="card-tags">
-      <span class="tag">contacts</span>
-      <span class="tag">python</span>
-      <span class="tag">gmail</span>
-    </div>
-    <div class="card-links">
-      <a href="https://github.com/amolsarva/amols-app-store/tree/main/personalcontacts-analyzer" target="_blank">↗ README</a>
-      <a href="https://github.com/amolsarva/amols-app-store/tree/main/personalcontacts-analyzer" target="_blank">↓ Download folder</a>
-    </div>
-  </div>
-
-  <div class="card" data-tags="productivity">
-    <div class="card-icon">📸</div>
-    <div class="card-title">screenshot-tidy</div>
-    <div class="card-desc">Automatically moves screenshots off your Desktop into a Screenshots folder the moment they're taken. Installs as a LaunchAgent — set and forget.</div>
-    <div class="card-tags">
-      <span class="tag">productivity</span>
-      <span class="tag">shell</span>
-      <span class="tag">launchagent</span>
-    </div>
-    <div class="card-links">
-      <a href="https://github.com/amolsarva/amols-app-store/tree/main/screenshot-tidy" target="_blank">↗ README</a>
-      <a href="https://github.com/amolsarva/amols-app-store/tree/main/screenshot-tidy" target="_blank">↓ Download folder</a>
-    </div>
-  </div>
-
-</div>
-
-<footer>
-  <p>
-    By <a href="https://amolsarva.com">Amol Sarva</a> ·
-    <a href="https://github.com/amolsarva/amols-app-store" target="_blank">github.com/amolsarva/amols-app-store</a>
-  </p>
-</footer>
-
-<script>
-  function filterCards(tag, btn) {
-    // Update active button
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-
-    // Filter cards
-    document.querySelectorAll('.card').forEach(card => {
-      if (tag === 'all') {
-        card.style.display = '';
-      } else {
-        const tags = card.dataset.tags || '';
-        card.style.display = tags.includes(tag) ? '' : 'none';
+  <script>
+    const apps = [
+      {
+        id: "imessage-cleanup",
+        name: "iMessage Cleanup",
+        slug: "imessage-cleanup",
+        icon: "💬",
+        category: "storage",
+        tags: ["storage", "icloud", "sqlite", "contacts"],
+        color: "linear-gradient(135deg, #1f6feb, #7c3aed)",
+        summary: "Export attachments by sender, refresh previous archives, group multiple handles, and build per-person backup folders with transcript, media, DB, and manifest.",
+        path: "imessage-cleanup/imessage_cleanup.sh",
+        featured: true
+      },
+      {
+        id: "github-autopush",
+        name: "GitHub Autopush",
+        slug: "github-autopush",
+        icon: "↻",
+        category: "productivity",
+        tags: ["git", "launchagent", "sync"],
+        color: "linear-gradient(135deg, #44d17d, #1f9a6a)",
+        summary: "A local manager and LaunchAgent that discovers GitHub repos, commits changes, pushes them, and keeps a readable history.",
+        path: "github-autopush/",
+        featured: true
+      },
+      {
+        id: "google-voice-exporter-extension",
+        name: "Google Voice Exporter",
+        slug: "google-voice-exporter-extension",
+        icon: "☎️",
+        category: "contacts",
+        tags: ["chrome", "contacts", "export"],
+        color: "linear-gradient(135deg, #ff6fae, #ff9f43)",
+        summary: "Load as a Chrome extension and export the open Google Voice thread as JSON, CSV, or TXT with debug logs and attachment URL capture.",
+        path: "google-voice-exporter-extension/",
+        featured: true
+      },
+      {
+        id: "meet-tab-sidecar-extension",
+        name: "Meet Tab Sidecar",
+        slug: "meet-tab-sidecar-extension",
+        icon: "M",
+        category: "productivity",
+        tags: ["chrome", "meet", "audio", "presentation"],
+        color: "linear-gradient(135deg, #2dd4bf, #2563eb)",
+        summary: "Chrome extension for joining a Google Meet call while a controlled sidecar tab speaks an intro, plays audio, or runs the presentation work.",
+        path: "downloads/meet-tab-sidecar-extension.zip",
+        featured: true
+      },
+      {
+        id: "screenshot-tidy",
+        name: "Screenshot Tidy",
+        slug: "screenshot-tidy",
+        icon: "📸",
+        category: "productivity",
+        tags: ["desktop", "launchagent", "screenshots"],
+        color: "linear-gradient(135deg, #62a8ff, #55d6c2)",
+        summary: "Moves screenshots off the Desktop into a Screenshots folder as soon as they appear, then keeps the setting alive across logins.",
+        path: "screenshot-tidy/"
+      },
+      {
+        id: "cleanicloud",
+        name: "Clean iCloud",
+        slug: "cleanicloud",
+        icon: "☁️",
+        category: "storage",
+        tags: ["icloud", "duplicates", "large-files"],
+        color: "linear-gradient(135deg, #55d6c2, #2f80ed)",
+        summary: "Hashes iCloud files to find duplicates, groups big suspicious clusters, and asks before removing anything.",
+        path: "cleanicloud/cleanicloud.sh"
+      },
+      {
+        id: "bigfiles",
+        name: "Bigfiles",
+        slug: "bigfiles",
+        icon: "📦",
+        category: "storage",
+        tags: ["disk", "audit", "archive"],
+        color: "linear-gradient(135deg, #f0c45b, #ff705d)",
+        summary: "Finds heavy folders under common home directories and checks recent reads/writes before you decide what to archive.",
+        path: "bigfiles/bigfiles.sh"
+      },
+      {
+        id: "cpu-guard",
+        name: "CPU Guard",
+        slug: "cpu-guard",
+        icon: "🔥",
+        category: "monitoring",
+        tags: ["cpu", "notifications", "python"],
+        color: "linear-gradient(135deg, #ff705d, #b993ff)",
+        summary: "Watches known noisy macOS background processes and sends notifications when they stay hot. Report-only by design.",
+        path: "cpu-guard/cpu_guard.py"
+      },
+      {
+        id: "drive-dedup",
+        name: "Drive Dedup",
+        slug: "drive-dedup",
+        icon: "💿",
+        category: "storage",
+        tags: ["external-drive", "duplicates", "python"],
+        color: "linear-gradient(135deg, #b993ff, #62a8ff)",
+        summary: "Two-phase scanner and consolidation planner for external drives, with resume checkpoints and optional AI categorization.",
+        path: "drive-dedup/"
+      },
+      {
+        id: "mac-migrator",
+        name: "Mac Migrator",
+        slug: "mac-migrator",
+        icon: "🖥️",
+        category: "migration",
+        tags: ["migration", "launchagents", "dotfiles"],
+        color: "linear-gradient(135deg, #cbd5e1, #64748b)",
+        summary: "Bundles LaunchAgents, shell config, common automation folders, brew lists, diagnostics, and a restore installer for the next Mac.",
+        path: "mac-migrator/mac_background_migrator.sh"
+      },
+      {
+        id: "abbu-to-csv",
+        name: "ABBU to CSV",
+        slug: "abbu-to-csv",
+        icon: "📇",
+        category: "contacts",
+        tags: ["contacts", "csv", "backup"],
+        color: "linear-gradient(135deg, #44d17d, #62a8ff)",
+        summary: "Turns an Apple Contacts .abbu backup into a readable CSV by locating the real Contacts database inside the package.",
+        path: "abbu-to-csv/abbu_to_csv.sh"
+      },
+      {
+        id: "personalcontacts-analyzer",
+        name: "Contacts Analyzer",
+        slug: "personalcontacts-analyzer",
+        icon: "📊",
+        category: "contacts",
+        tags: ["gmail", "sqlite", "analysis"],
+        color: "linear-gradient(135deg, #f0c45b, #44d17d)",
+        summary: "Archives Gmail headers locally and builds relationship/activity reports without storing message bodies.",
+        path: "personalcontacts-analyzer/"
+      },
+      {
+        id: "pdf-to-xls",
+        name: "PDF to XLS",
+        slug: "pdf-to-xls",
+        icon: "📄",
+        category: "productivity",
+        tags: ["pdf", "excel", "conversion"],
+        color: "linear-gradient(135deg, #ff9f43, #62a8ff)",
+        summary: "Extracts PDF text with poppler and writes a quick Excel workbook for rough table recovery.",
+        path: "pdf-to-xls/pdftoxls.sh"
       }
-    });
-  }
-</script>
+    ];
 
+    const categories = [
+      ["all", "All"],
+      ["storage", "Storage"],
+      ["productivity", "Productivity"],
+      ["contacts", "Contacts"],
+      ["meet", "Meet"],
+      ["migration", "Migration"],
+      ["monitoring", "Monitoring"]
+    ];
+
+    const repo = "https://github.com/amolsarva/amols-app-store";
+    let activeCategory = "all";
+
+    const filters = document.getElementById("filters");
+    const appsNode = document.getElementById("apps");
+    const featuredNode = document.getElementById("featured");
+    const search = document.getElementById("search");
+    const empty = document.getElementById("empty");
+    const count = document.getElementById("result-count");
+
+    function readmeUrl(app) {
+      if (app.slug === "meet-tab-sidecar-extension") return `${repo}/tree/main/meet-tab-sidecar-extension`;
+      return `${repo}/tree/main/${app.slug}`;
+    }
+
+    function getUrl(app) {
+      if (app.path.startsWith("downloads/")) return app.path;
+      if (app.path.endsWith("/")) return `${repo}/tree/main/${app.slug}`;
+      return `https://raw.githubusercontent.com/amolsarva/amols-app-store/main/${app.path}`;
+    }
+
+    function renderFilters() {
+      filters.innerHTML = categories.map(([id, label]) => (
+        `<button class="filter ${id === activeCategory ? "active" : ""}" data-filter="${id}">${label}</button>`
+      )).join("");
+    }
+
+    function renderFeatured() {
+      featuredNode.innerHTML = apps.filter(app => app.featured).map(app => `
+        <article class="feature" style="--tone:${app.color}" data-icon="${app.icon}">
+          <h3>${app.name}</h3>
+          <p>${app.summary}</p>
+          <a href="${readmeUrl(app)}" target="_blank" rel="noopener">Open</a>
+        </article>
+      `).join("");
+    }
+
+    function appMatches(app, query) {
+      const haystack = [app.name, app.slug, app.category, app.summary, ...app.tags].join(" ").toLowerCase();
+      const categoryOk = activeCategory === "all" || app.category === activeCategory || app.tags.includes(activeCategory);
+      return categoryOk && haystack.includes(query);
+    }
+
+    function renderApps() {
+      const query = search.value.trim().toLowerCase();
+      const visible = apps.filter(app => appMatches(app, query));
+      count.textContent = `${visible.length} ${visible.length === 1 ? "app" : "apps"} available`;
+      empty.style.display = visible.length ? "none" : "block";
+      appsNode.innerHTML = visible.map(app => `
+        <article class="app-card" data-category="${app.category}">
+          <div class="app-top">
+            <div class="icon" style="--icon-bg:${app.color}">${app.icon}</div>
+            <div class="app-title">
+              <h3>${app.name}</h3>
+              <span>${app.slug}</span>
+            </div>
+          </div>
+          <p>${app.summary}</p>
+          <div class="chips">${app.tags.map(tag => `<span class="chip">${tag}</span>`).join("")}</div>
+          <div class="card-actions">
+            <a class="mini-btn get" href="${getUrl(app)}">Get</a>
+            <a class="mini-btn" href="${readmeUrl(app)}" target="_blank" rel="noopener">Details</a>
+          </div>
+        </article>
+      `).join("");
+    }
+
+    filters.addEventListener("click", event => {
+      const button = event.target.closest("button[data-filter]");
+      if (!button) return;
+      activeCategory = button.dataset.filter;
+      renderFilters();
+      renderApps();
+    });
+
+    search.addEventListener("input", renderApps);
+
+    renderFilters();
+    renderFeatured();
+    renderApps();
+  </script>
 </body>
 </html>

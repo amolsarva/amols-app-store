@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meet Tab Sidecar</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <header>
+      <p class="kicker">Meet Tab Sidecar</p>
+      <h1>Run the work from a second tab.</h1>
+    </header>
+
+    <label>
+      Meet URL
+      <input id="meetUrl" type="url" placeholder="https://meet.google.com/abc-defg-hij">
+    </label>
+
+    <label>
+      Work tab URL
+      <input id="workUrl" type="url">
+    </label>
+
+    <label>
+      Spoken intro
+      <textarea id="message" rows="4"></textarea>
+    </label>
+
+    <div class="actions">
+      <button id="openMeet">Open Meet</button>
+      <button id="openSidecar">Open Sidecar</button>
+      <button id="openWork" class="secondary">Open Work URL</button>
+      <button id="copyChecklist" class="secondary">Copy Checklist</button>
+    </div>
+
+    <p id="status" class="status">Configure once, then open Meet and the sidecar tab.</p>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>

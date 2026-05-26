@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meet Tab Sidecar</title>
+  <link rel="stylesheet" href="welcome.css">
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <p class="kicker">Chrome extension</p>
+      <h1>Join the Meet. Let the other tab do the work.</h1>
+      <p>Meet Tab Sidecar opens a controlled companion tab for audio, scripted intros, and presentation handoffs. You stay in Google Meet; the sidecar carries the material.</p>
+      <div class="actions">
+        <button id="openSidecar">Open Sidecar</button>
+        <button id="openMeet" class="secondary">Open Meet</button>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article>
+        <h2>What it does</h2>
+        <p>Stores a Meet URL, a work-tab URL, a spoken intro, and an audio URL. From the popup or Meet overlay, open the sidecar and present that tab with audio.</p>
+      </article>
+      <article>
+        <h2>What Chrome requires</h2>
+        <p>Chrome and Meet require a user gesture to share a tab and enable audio. The extension guides the handoff, but it does not silently join calls or pipe audio into the microphone.</p>
+      </article>
+      <article>
+        <h2>Best workflow</h2>
+        <p>Join Meet, open Sidecar, choose Present now, select A tab, pick Sidecar, keep Also share tab audio enabled, then play the material.</p>
+      </article>
+    </section>
+  </main>
+  <script src="welcome.js"></script>
+</body>
+</html>

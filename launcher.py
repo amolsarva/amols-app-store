@@ -60,11 +60,27 @@ DESCRIPTIONS = {
         "— into a portable archive you can restore on a new machine. Saves the hours of re-configuring "
         "everything from scratch when you get a new Mac."
     ),
+    "pdf-to-xls": (
+        "Convert PDF tables",
+        "Extracts text from a PDF with poppler and writes the rows to an Excel workbook. Useful for "
+        "quick one-off conversions when a bank, school, or agency only gives you a PDF."
+    ),
     "personalcontacts-analyzer": (
         "Analyze your contacts & relationships",
         "Reads your Contacts database and produces stats and insights about your network — who you "
         "actually have info on, gaps in your address book, duplicate entries, and so on. Useful for "
         "a contacts cleanup or figuring out who's missing an email or phone number."
+    ),
+    "google-voice-exporter-extension": (
+        "Export Google Voice threads",
+        "Chrome extension for exporting the currently open Google Voice conversation as JSON, CSV, "
+        "or plain text. Open the folder, then load it as an unpacked extension in Chrome."
+    ),
+    "meet-tab-sidecar-extension": (
+        "Run Meet work from another tab",
+        "Chrome extension for Google Meet sessions where a second browser tab needs to speak an intro, "
+        "play a recording, or run the presentation surface. It adds a Meet overlay, a configurable "
+        "sidecar tab, and clear tab-audio sharing steps."
     ),
     "screenshot-tidy": (
         "Auto-organize screenshots",
@@ -88,6 +104,11 @@ SCRIPT_ENTRY_POINTS = {
     "pdf-to-xls": "pdftoxls.sh",
     "personalcontacts-analyzer": "pca.py",
     "screenshot-tidy": "screenshot-tidy.sh",
+}
+
+FOLDER_ONLY_APPS = {
+    "google-voice-exporter-extension",
+    "meet-tab-sidecar-extension",
 }
 
 ENTRY_POINTS = [
@@ -120,6 +141,9 @@ F_MONO   = ("Menlo", 11)
 
 
 def find_entry(folder: Path):
+    if folder.name in FOLDER_ONLY_APPS:
+        return folder
+
     configured = SCRIPT_ENTRY_POINTS.get(folder.name)
     if configured:
         p = folder / configured
@@ -162,6 +186,8 @@ def discover():
 
 
 def command_for(path: Path):
+    if path.is_dir():
+        return f"open {shlex.quote(str(path))}"
     ext = path.suffix.lower()
     if ext == ".py":
         return f"python3 {shlex.quote(str(path))}"
@@ -171,6 +197,10 @@ def command_for(path: Path):
 
 
 def run_script_in_terminal(path: Path):
+    if path.is_dir():
+        subprocess.Popen(["open", str(path)])
+        return
+
     launcher_dir = Path.home() / "Library" / "Application Support" / "Mac Scripts Launcher"
     launcher_dir.mkdir(parents=True, exist_ok=True)
     safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "-", path.parent.name).strip("-") or "script"
@@ -299,7 +329,8 @@ class App(tk.Tk):
         # Launch button on the right
         btn_frame = tk.Frame(card, bg=CARD_BG, padx=12)
         btn_frame.pack(side="right", fill="y")
-        btn = tk.Button(btn_frame, text="Launch",
+        button_text = "Open" if path.is_dir() else "Launch"
+        btn = tk.Button(btn_frame, text=button_text,
                         command=lambda p=path, n=name: self._launch(p, n),
                         font=F_DIM, fg=ACCENT_TXT, bg=ACCENT,
                         activeforeground=ACCENT_TXT, activebackground="#245a41",

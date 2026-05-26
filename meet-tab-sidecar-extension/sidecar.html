@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meet Sidecar Stage</title>
+  <link rel="stylesheet" href="sidecar.css">
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <div>
+        <p class="kicker">Sidecar tab</p>
+        <h1>Share this tab into Meet.</h1>
+        <p class="lede">This is the controlled work surface. Speak the intro, play the recording, and keep the Meet call in a separate tab.</p>
+      </div>
+      <div class="status-card">
+        <span id="clock">00:00</span>
+        <p id="state">Ready</p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <label>
+        Spoken intro
+        <textarea id="message" rows="4"></textarea>
+      </label>
+      <label>
+        Audio URL
+        <input id="audioUrl" type="url">
+      </label>
+      <audio id="audio" controls preload="auto"></audio>
+      <div class="actions">
+        <button id="playIntro">Speak Intro + Play</button>
+        <button id="playAudio" class="secondary">Play Audio Only</button>
+        <button id="pause" class="secondary">Pause</button>
+        <button id="restart" class="secondary">Restart</button>
+      </div>
+    </section>
+
+    <section class="panel checklist">
+      <h2>Meet handoff</h2>
+      <ol>
+        <li>Join the Meet in another Chrome tab.</li>
+        <li>In Meet, choose Present now / Share screen.</li>
+        <li>Select A tab.</li>
+        <li>Pick this Sidecar tab.</li>
+        <li>Keep Also share tab audio enabled.</li>
+        <li>Press Speak Intro + Play here.</li>
+      </ol>
+    </section>
+  </main>
+
+  <script src="sidecar.js"></script>
+</body>
+</html>
