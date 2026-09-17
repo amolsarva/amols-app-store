@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Google Voice Export History</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: rgba(255,255,255,0.08);
+      --accent: #4f8ef7;
+      --accent-dim: rgba(79,142,247,0.15);
+      --green: #34d399;
+      --green-dim: rgba(52,211,153,0.12);
+      --purple: #a78bfa;
+      --purple-dim: rgba(167,139,250,0.12);
+      --yellow: #fbbf24;
+      --muted: #6b7280;
+      --text: #e2e8f0;
+      --text-dim: #94a3b8;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+      min-height: 100vh;
+      padding: 32px 24px 64px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 36px;
+      max-width: 860px;
+      margin-inline: auto;
+    }
+
+    .logo {
+      width: 40px; height: 40px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(79,142,247,0.3);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    header p {
+      color: var(--text-dim);
+      font-size: 13px;
+      margin-top: 2px;
+    }
+
+    .actions {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-dim);
+      cursor: pointer;
+      font: 12px/1 system-ui, sans-serif;
+      font-weight: 600;
+      padding: 7px 12px;
+      transition: all 0.15s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .btn:hover { background: #2d3149; color: var(--text); border-color: rgba(255,255,255,0.15); }
+    .btn.danger:hover { background: rgba(239,68,68,0.15); color: #f87171; border-color: rgba(239,68,68,0.3); }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      max-width: 860px;
+      margin: 0 auto 32px;
+    }
+
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+    }
+
+    .stat-value {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      color: var(--text-dim);
+      font-size: 12px;
+    }
+
+    .timeline {
+      max-width: 860px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .run {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }
+
+    .run:hover { border-color: rgba(255,255,255,0.16); }
+
+    .run-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 20px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .run-header:hover { background: rgba(255,255,255,0.02); }
+
+    .run-icon {
+      width: 36px; height: 36px;
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .run-icon.sms  { background: var(--accent-dim); }
+    .run-icon.img  { background: var(--purple-dim); }
+
+    .run-meta { flex: 1; min-width: 0; }
+
+    .run-phone {
+      font-weight: 600;
+      font-size: 15px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .run-time {
+      color: var(--text-dim);
+      font-size: 12px;
+      margin-top: 1px;
+    }
+
+    .run-badges {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--text-dim);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 9px;
+      white-space: nowrap;
+    }
+
+    .badge.msgs  { background: var(--accent-dim); color: var(--accent); border-color: rgba(79,142,247,0.25); }
+    .badge.imgs  { background: var(--purple-dim); color: var(--purple); border-color: rgba(167,139,250,0.25); }
+    .badge.fmt   { background: var(--green-dim);  color: var(--green);  border-color: rgba(52,211,153,0.25); }
+
+    .chevron {
+      color: var(--muted);
+      font-size: 12px;
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+
+    .run.open .chevron { transform: rotate(90deg); }
+
+    .run-body {
+      display: none;
+      padding: 0 20px 18px;
+      border-top: 1px solid var(--border);
+    }
+
+    .run.open .run-body { display: block; }
+
+    .run-body-inner {
+      padding-top: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .file-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      text-decoration: none;
+      color: var(--text);
+      transition: all 0.15s;
+      font-size: 13px;
+    }
+
+    .file-link:hover { border-color: rgba(79,142,247,0.4); background: rgba(79,142,247,0.07); }
+
+    .file-link .file-icon { font-size: 18px; flex-shrink: 0; }
+
+    .file-link-info { flex: 1; min-width: 0; }
+
+    .file-link-name {
+      font-weight: 600;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-link-path {
+      color: var(--text-dim);
+      font-size: 11px;
+      font-family: "SF Mono", "Fira Mono", monospace;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-link-arrow { color: var(--muted); font-size: 14px; }
+
+    .path-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+    .mini {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-dim);
+      cursor: pointer;
+      font: 600 11px/1 system-ui, sans-serif;
+      padding: 6px 9px;
+      transition: all 0.15s;
+    }
+    .mini:hover { background: var(--accent-dim); color: var(--accent); border-color: rgba(79,142,247,0.35); }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px;
+    }
+
+    .meta-item {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+    }
+
+    .meta-item-label { color: var(--muted); font-size: 11px; }
+    .meta-item-value { font-size: 13px; font-weight: 600; margin-top: 2px; }
+
+    .source-link {
+      color: var(--accent);
+      font-size: 12px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .source-link:hover { text-decoration: underline; }
+
+    .empty {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--text-dim);
+    }
+
+    .empty .empty-icon { font-size: 48px; margin-bottom: 16px; }
+    .empty h2 { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+    .empty p { font-size: 13px; max-width: 360px; margin: 0 auto; }
+
+    .section-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    @media (max-width: 600px) {
+      body { padding: 20px 14px 48px; }
+      .run-badges { display: none; }
+      header { flex-wrap: wrap; }
+      .actions { margin-left: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">📤</div>
+  <div>
+    <h1>Export History</h1>
+    <p id="subtitle">Google Voice Thread Exporter <span id="ver" style="opacity:0.4">v1.4.6</span></p>
+  </div>
+  <div class="actions">
+    <span id="folder-badge" style="display:none;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px">
+      📁 <span id="folder-badge-name"></span>
+    </span>
+    <button class="btn" id="setpath-btn" title="Set the absolute folder path for full paths & Finder commands">📂 Set full path</button>
+    <button class="btn" id="reload-btn" title="Refresh the list from saved export history">↻ Refresh</button>
+    <button class="btn danger" id="clear-btn">🗑 Clear history</button>
+  </div>
+</header>
+
+<div class="stats-row" id="stats-row"></div>
+
+<div class="timeline" id="timeline"></div>
+
+<script src="history.js"></script>
+<!-- legacy inline logic removed; moved to history.js for MV3 CSP compliance
+  let OUTPUT_FOLDER_NAME = 'your export folder';
+
+  // Show the real version everywhere (single source of truth = manifest).
+  let EXT_VERSION = '';
+  try { EXT_VERSION = chrome.runtime.getManifest().version; } catch (_) {}
+  if (EXT_VERSION) {
+    const verEl = document.getElementById('ver');
+    if (verEl) verEl.textContent = 'v' + EXT_VERSION;
+    document.title = `Google Voice Export History (v${EXT_VERSION})`;
+  }
+
+  function relTime(iso) {
+    const delta = (Date.now() - new Date(iso)) / 1000;
+    if (delta < 60) return 'just now';
+    if (delta < 3600) return `${Math.floor(delta / 60)}m ago`;
+    if (delta < 86400) return `${Math.floor(delta / 3600)}h ago`;
+    if (delta < 7 * 86400) return `${Math.floor(delta / 86400)}d ago`;
+    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function absTime(iso) {
+    return new Date(iso).toLocaleString(undefined, {
+      weekday: 'short', month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit',
+    });
+  }
+
+  function formatExt(fmt) {
+    return (fmt || 'json').toUpperCase();
+  }
+
+  function fileIcon(fmt) {
+    if (fmt === 'csv') return '📊';
+    if (fmt === 'txt') return '📄';
+    return '📋';
+  }
+
+  function renderStats(history) {
+    const totalRuns = history.length;
+    const totalMsgs = history.reduce((n, r) => n + (r.messageCount || 0), 0);
+    const totalImgs = history.reduce((n, r) => n + (r.imageCount || 0), 0);
+    const phones = new Set(history.map((r) => r.digits).filter(Boolean)).size;
+
+    const stats = [
+      { value: totalRuns, label: 'Total exports', color: '#4f8ef7' },
+      { value: totalMsgs.toLocaleString(), label: 'Messages exported', color: '#34d399' },
+      { value: totalImgs.toLocaleString(), label: 'Images found', color: '#a78bfa' },
+      { value: phones, label: 'Unique contacts', color: '#fbbf24' },
+    ];
+
+    document.getElementById('stats-row').innerHTML = stats.map((s) => `
+      <div class="stat">
+        <div class="stat-value" style="color:${s.color}">${s.value}</div>
+        <div class="stat-label">${s.label}</div>
+      </div>
+    `).join('');
+
+    document.getElementById('subtitle').textContent =
+      `${totalRuns} export${totalRuns !== 1 ? 's' : ''} · last updated ${relTime(history[0]?.exportedAt || new Date().toISOString())}`
+      + (EXT_VERSION ? ` · v${EXT_VERSION}` : '');
+  }
+
+  function renderTimeline(history) {
+    const container = document.getElementById('timeline');
+
+    if (history.length === 0) {
+      container.innerHTML = `
+        <div class="empty">
+          <div class="empty-icon">📭</div>
+          <h2>No exports yet</h2>
+          <p>Open a Google Voice conversation and click "Export open thread" in the extension popup.</p>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = history.map((run, i) => {
+      const hasImages = run.imageCount > 0;
+      const dataFilename = run.filename || `google-voice-thread-*.${run.format || 'json'}`;
+      const folderRoot = run.folderName || OUTPUT_FOLDER_NAME;
+      const dataPath = `${folderRoot}/${dataFilename}`;
+      const imgFolder = run.imageSubfolder ? `${folderRoot}/${run.imageSubfolder}` : null;
+
+      return `
+        <div class="run" id="run-${i}">
+          <div class="run-header" onclick="toggleRun(${i})">
+            <div class="run-icon sms">💬</div>
+            <div class="run-meta">
+              <div class="run-phone">${run.phone || 'Unknown contact'}</div>
+              <div class="run-time">${absTime(run.exportedAt)} · ${relTime(run.exportedAt)}</div>
+            </div>
+            <div class="run-badges">
+              <span class="badge msgs">💬 ${(run.messageCount || 0).toLocaleString()} msgs</span>
+              ${hasImages ? `<span class="badge imgs">🖼 ${run.imageCount} images</span>` : ''}
+              <span class="badge fmt">${formatExt(run.format)}</span>
+            </div>
+            <span class="chevron">▶</span>
+          </div>
+          <div class="run-body">
+            <div class="run-body-inner">
+
+              <div>
+                <div class="section-label">Exported file</div>
+                <a class="file-link" href="#" onclick="copyPath('${dataPath}', event)">
+                  <span class="file-icon">${fileIcon(run.format)}</span>
+                  <div class="file-link-info">
+                    <div class="file-link-name">${dataFilename}</div>
+                    <div class="file-link-path">${dataPath}</div>
+                  </div>
+                  <span class="file-link-arrow" title="Click to copy path">📋</span>
+                </a>
+              </div>
+
+              ${hasImages && imgFolder ? `
+              <div>
+                <div class="section-label">Images folder</div>
+                <a class="file-link" href="#" onclick="copyPath('${imgFolder}', event)">
+                  <span class="file-icon">🖼️</span>
+                  <div class="file-link-info">
+                    <div class="file-link-name">${run.imageCount} image${run.imageCount !== 1 ? 's' : ''}</div>
+                    <div class="file-link-path">${imgFolder}</div>
+                  </div>
+                  <span class="file-link-arrow" title="Click to copy path">📋</span>
+                </a>
+              </div>` : ''}
+
+              <div class="meta-grid">
+                <div class="meta-item">
+                  <div class="meta-item-label">Messages exported</div>
+                  <div class="meta-item-value">${(run.messageCount || 0).toLocaleString()}</div>
+                </div>
+                <div class="meta-item">
+                  <div class="meta-item-label">Total in thread</div>
+                  <div class="meta-item-value">${(run.totalMessages || run.messageCount || 0).toLocaleString()}</div>
+                </div>
+                <div class="meta-item">
+                  <div class="meta-item-label">Format</div>
+                  <div class="meta-item-value">${formatExt(run.format)}</div>
+                </div>
+                ${run.coverage ? `
+                <div class="meta-item">
+                  <div class="meta-item-label">📅 Dates covered</div>
+                  <div class="meta-item-value">${run.coverage}</div>
+                </div>` : ''}
+                ${run.addedThisRun != null ? `
+                <div class="meta-item">
+                  <div class="meta-item-label">New this run</div>
+                  <div class="meta-item-value">+${run.addedThisRun.toLocaleString()}</div>
+                </div>` : ''}
+                ${run.filter ? `
+                <div class="meta-item">
+                  <div class="meta-item-label">Filter applied</div>
+                  <div class="meta-item-value">"${run.filter}"</div>
+                </div>` : ''}
+              </div>
+
+              ${run.sourceUrl ? `
+              <div>
+                <a class="source-link" href="${run.sourceUrl}" target="_blank">
+                  🔗 Open original thread in Google Voice
+                </a>
+              </div>` : ''}
+
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Auto-open the first (most recent) run
+    if (history.length > 0) toggleRun(0);
+  }
+
+  function toggleRun(i) {
+    const el = document.getElementById(`run-${i}`);
+    el.classList.toggle('open');
+  }
+
+  let copiedTimeout;
+  function copyPath(path, e) {
+    e.preventDefault();
+    navigator.clipboard.writeText(path).then(() => {
+      const arrow = e.currentTarget.querySelector('.file-link-arrow');
+      if (arrow) {
+        arrow.textContent = '✅';
+        clearTimeout(copiedTimeout);
+        copiedTimeout = setTimeout(() => { arrow.textContent = '📋'; }, 1800);
+      }
+    });
+  }
+
+  // "Reload extension" used to call chrome.runtime.reload(), which tears down the
+  // extension context and orphans THIS page (it can no longer read storage → blank).
+  // Just re-read storage and re-render instead; that's all this page needs.
+  document.getElementById('reload-btn').addEventListener('click', () => {
+    load();
+  });
+
+  // Decode a base64url-or-base64 JSON payload that may be passed in the URL hash.
+  // The extension opens this page as history.html#<base64 of {exportHistory:[...]}>.
+  function decodeHashPayload() {
+    let raw = (location.hash || '').replace(/^#/, '').trim();
+    if (!raw) return null;
+    try {
+      raw = decodeURIComponent(raw);
+    } catch (_) { /* not URL-encoded; use as-is */ }
+    // Normalize base64url → base64
+    raw = raw.replace(/-/g, '+').replace(/_/g, '/');
+    while (raw.length % 4) raw += '=';
+    try {
+      const json = decodeURIComponent(escape(atob(raw))); // handle UTF-8
+      return JSON.parse(json);
+    } catch (e) {
+      try {
+        // Fallback: maybe the hash is raw (non-base64) JSON.
+        return JSON.parse(location.hash.replace(/^#/, ''));
+      } catch (_) {
+        console.warn('[GV-Exporter] Could not decode hash payload:', e.message);
+        return null;
+      }
+    }
+  }
+
+  function applyData(exportHistory, outputFolderName) {
+    exportHistory = Array.isArray(exportHistory) ? exportHistory : [];
+    if (outputFolderName) {
+      OUTPUT_FOLDER_NAME = outputFolderName;
+      const badge = document.getElementById('folder-badge');
+      document.getElementById('folder-badge-name').textContent = outputFolderName;
+      badge.style.display = 'flex';
+    }
+    try {
+      renderStats(exportHistory);
+      renderTimeline(exportHistory);
+    } catch (err) {
+      // A single malformed history entry must not blank the whole page.
+      console.error('[GV-Exporter] render failed:', err);
+      document.getElementById('timeline').innerHTML =
+        `<div class="empty"><div class="empty-icon">⚠️</div><h2>Could not render some exports</h2><p>${err.message}</p></div>`;
+    }
+  }
+
+  function load() {
+    const timeline = document.getElementById('timeline');
+    timeline.innerHTML = `<div class="empty"><div class="empty-icon" style="font-size:32px">⏳</div><p>Loading…</p></div>`;
+
+    try {
+      // 1. Prefer data passed directly in the URL hash (works even without storage access).
+      const hashData = decodeHashPayload();
+      if (hashData && (Array.isArray(hashData.exportHistory) || Array.isArray(hashData))) {
+        const history = Array.isArray(hashData) ? hashData : hashData.exportHistory;
+        applyData(history, hashData.outputFolderName || '');
+        return;
+      }
+
+      // 2. Read from chrome.storage.local — this is the "show past exports" path.
+      //    It does NOT require re-running an export; it just displays what's saved.
+      if (typeof chrome === 'undefined' || !chrome.storage) {
+        timeline.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><h2>No export data found</h2>
+          <p>This page opens automatically after an export. If you reached it directly, run an export first.</p></div>`;
+        return;
+      }
+
+      // The tab can open a beat before content.js finishes flushing the write,
+      // so if history is empty we retry a couple of times before giving up.
+      let attempts = 0;
+      const readStorage = () => {
+        chrome.storage.local.get({ exportHistory: [], outputFolderName: '' }, (result) => {
+          if (chrome.runtime.lastError) {
+            timeline.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><h2>Storage error</h2><p>${chrome.runtime.lastError.message}</p></div>`;
+            return;
+          }
+          const history = Array.isArray(result.exportHistory) ? result.exportHistory : [];
+          if (history.length === 0 && attempts < 4) {
+            attempts++;
+            setTimeout(readStorage, 300); // wait for the write to flush, then retry
+            return;
+          }
+          applyData(history, result.outputFolderName);
+        });
+      };
+      readStorage();
+    } catch (err) {
+      // Never leave the page blank on an unexpected error.
+      timeline.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><h2>Could not render export</h2><p>${err.message}</p></div>`;
+      console.error('[GV-Exporter] history load failed:', err);
+    }
+  }
+
+  document.getElementById('clear-btn').addEventListener('click', () => {
+    if (!confirm('Clear all export history? (Your exported files are not affected.)')) return;
+    chrome.storage.local.remove('exportHistory', () => {
+      renderStats([]);
+      renderTimeline([]);
+    });
+  });
+
+  // Re-render when the tab is reused for a new export (background.js updates the hash).
+  window.addEventListener('hashchange', load);
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', load);
+  } else {
+    load();
+  }
+-->
+</body>
+</html>

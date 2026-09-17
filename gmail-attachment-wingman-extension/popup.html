@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Attachment Wingman</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <div class="mark">⌁</div>
+    <div>
+      <h1>Attachment Wingman</h1>
+      <p>Build or reopen your Gmail attachment extractor.</p>
+    </div>
+  </header>
+
+  <section class="panel">
+    <h2>1 · Open Apps Script</h2>
+    <p>Use the Google account / Chrome profile you want. This extension does not read Gmail.</p>
+    <div class="row">
+      <button id="openNewScript">New script</button>
+      <button id="openDashboard" class="secondary">Script dashboard</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>2 · Paste these files</h2>
+    <div class="codeHead">
+      <strong>Code.gs</strong>
+      <button class="copy" data-target="codeGs">Copy</button>
+    </div>
+    <textarea id="codeGs" readonly></textarea>
+
+    <div class="codeHead">
+      <strong>Index.html</strong>
+      <button class="copy" data-target="indexHtml">Copy</button>
+    </div>
+    <textarea id="indexHtml" readonly></textarea>
+  </section>
+
+  <section class="panel">
+    <h2>3 · Deploy + run checklist</h2>
+    <ol>
+      <li>In Apps Script, name the project <b>Gmail Attachment Extractor</b>.</li>
+      <li>Paste <b>Code.gs</b>.</li>
+      <li>Click <b>+ → HTML</b>, name it <b>Index</b>, paste <b>Index.html</b>.</li>
+      <li>Click <b>Deploy → New deployment → Web app</b>.</li>
+      <li>Set <b>Execute as: Me</b>.</li>
+      <li>Set <b>Who has access: Only myself</b>.</li>
+      <li>Click <b>Deploy</b>, authorize, then open the web app URL.</li>
+      <li>Run a query like <code>has:attachment newer_than:7d</code>.</li>
+    </ol>
+    <div class="row">
+      <button id="saveWebAppUrl" class="secondary">Save current tab as my web app</button>
+      <button id="openSavedWebApp">Open saved web app</button>
+    </div>
+    <p id="savedStatus" class="status"></p>
+  </section>
+
+  <section class="panel compact">
+    <h2>Useful Gmail searches</h2>
+    <button class="chip" data-copy="has:attachment newer_than:7d">last 7 days</button>
+    <button class="chip" data-copy="filename:pdf has:attachment">PDFs</button>
+    <button class="chip" data-copy="subject:NSCC has:attachment">NSCC</button>
+    <button class="chip" data-copy="from:someone@example.com has:attachment">from person</button>
+  </section>
+
+  <footer>
+    Tiny bridge, not inbox spyware. It opens tabs and copies code; Apps Script does the Gmail work.
+  </footer>
+
+  <script src="payloads.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

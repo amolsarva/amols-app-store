@@ -1,0 +1,174 @@
+/***************************************
+ * Gmail Attachment Extractor + Bundler
+ ***************************************/
+
+const CONFIG = {
+  SOURCE_LABEL: 'Detached/Attachment Extracted',
+  DRIVE_ROOT_FOLDER_PREFIX: 'Gmail Attachment Extract',
+  THREAD_PAGE_SIZE: 50,
+  MAX_EMAIL_BUNDLE_BYTES: 18 * 1024 * 1024,
+  MAX_SINGLE_ATTACHMENT_EMAIL_BYTES: 18 * 1024 * 1024,
+  INCLUDE_INLINE_IMAGES: false
+};
+
+function doGet() {
+  return HtmlService
+    .createHtmlOutputFromFile('Index')
+    .setTitle('Gmail Attachment Extractor')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function runAttachmentExtractor(form) {
+  const query = String(form.query || '').trim();
+  const recipient = String(form.recipient || '').trim() || getBestSelfEmail_();
+
+  if (!query) throw new Error('Please enter a Gmail search query.');
+  if (!recipient) throw new Error('Could not determine your email address. Enter it manually.');
+
+  const startedAt = new Date();
+  const runStamp = Utilities.formatDate(startedAt, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  const folderName = `${CONFIG.DRIVE_ROOT_FOLDER_PREFIX} - ${sanitizeForFilename_(query).slice(0, 80)} - ${runStamp}`;
+  const folder = DriveApp.createFolder(folderName);
+  const label = getOrCreateLabel_(CONFIG.SOURCE_LABEL);
+
+  let start = 0;
+  let totalThreads = 0;
+  let totalMessages = 0;
+  let totalAttachments = 0;
+  let totalSavedToDrive = 0;
+  let totalAttachedToEmails = 0;
+  let totalSkippedInlineOrEmpty = 0;
+
+  const manifestRows = [[
+    'source_thread_subject','source_message_date','source_message_from','original_filename',
+    'saved_drive_filename','size_bytes','mime_type','drive_url','emailed_in_bundle','note'
+  ]];
+
+  let emailBundles = [];
+  let currentBundle = [];
+  let currentBundleBytes = 0;
+  let currentBundleIndex = 1;
+
+  while (true) {
+    const threads = GmailApp.search(query, start, CONFIG.THREAD_PAGE_SIZE);
+    if (!threads || threads.length === 0) break;
+
+    totalThreads += threads.length;
+
+    for (const thread of threads) {
+      label.addToThread(thread);
+      const messages = thread.getMessages();
+      totalMessages += messages.length;
+
+      for (const message of messages) {
+        const subject = thread.getFirstMessageSubject() || '(no subject)';
+        const messageDate = message.getDate();
+        const messageFrom = message.getFrom();
+        const attachments = message.getAttachments({
+          includeInlineImages: CONFIG.INCLUDE_INLINE_IMAGES,
+          includeAttachments: true
+        });
+
+        if (!attachments || attachments.length === 0) {
+          totalSkippedInlineOrEmpty++;
+          continue;
+        }
+
+        for (const attachment of attachments) {
+          totalAttachments++;
+          const originalName = attachment.getName() || 'unnamed_attachment';
+          const size = attachment.getSize ? attachment.getSize() : attachment.getBytes().length;
+          const mimeType = attachment.getContentType() || 'application/octet-stream';
+          const safeName = makeUniqueFilename_(
+            folder,
+            `${formatDateForFilename_(messageDate)}__${sanitizeForFilename_(messageFrom).slice(0, 40)}__${sanitizeForFilename_(originalName)}`
+          );
+
+          const savedFile = folder.createFile(attachment.copyBlob().setName(safeName));
+          totalSavedToDrive++;
+
+          let emailedInBundle = 'no';
+          let note = '';
+
+          if (size > CONFIG.MAX_SINGLE_ATTACHMENT_EMAIL_BYTES) {
+            note = 'Saved to Drive only; too large for safe email bundling.';
+          } else {
+            const blobForEmail = attachment.copyBlob().setName(safeName);
+            if (currentBundleBytes + size > CONFIG.MAX_EMAIL_BUNDLE_BYTES && currentBundle.length > 0) {
+              emailBundles.push({ index: currentBundleIndex++, blobs: currentBundle, bytes: currentBundleBytes });
+              currentBundle = [];
+              currentBundleBytes = 0;
+            }
+            currentBundle.push(blobForEmail);
+            currentBundleBytes += size;
+            emailedInBundle = 'yes';
+            totalAttachedToEmails++;
+          }
+
+          manifestRows.push([
+            subject, messageDate, messageFrom, originalName, safeName, size, mimeType,
+            savedFile.getUrl(), emailedInBundle, note
+          ]);
+        }
+      }
+    }
+    start += CONFIG.THREAD_PAGE_SIZE;
+  }
+
+  if (currentBundle.length > 0) {
+    emailBundles.push({ index: currentBundleIndex++, blobs: currentBundle, bytes: currentBundleBytes });
+  }
+
+  const manifestCsv = rowsToCsv_(manifestRows);
+  const manifestBlob = Utilities.newBlob(manifestCsv, 'text/csv', 'attachment_extraction_manifest.csv');
+  const manifestFile = folder.createFile(manifestBlob.copyBlob());
+
+  const summaryBody = `Gmail attachment extraction complete.\n\nSearch query:\n${query}\n\nSource label applied:\n${CONFIG.SOURCE_LABEL}\n\nDrive folder:\n${folder.getUrl()}\n\nManifest:\n${manifestFile.getUrl()}\n\nCounts:\n- Matching threads: ${totalThreads}\n- Messages scanned: ${totalMessages}\n- Attachments found: ${totalAttachments}\n- Attachments saved to Drive: ${totalSavedToDrive}\n- Attachments bundled into sent email(s): ${totalAttachedToEmails}\n- Email bundle count: ${emailBundles.length}\n\nNote:\nGmail does not allow normal Apps Script to truly remove/detach attachments from original messages. The source threads were labeled instead.\n`;
+
+  GmailApp.sendEmail(recipient, `Gmail attachment extraction summary — ${runStamp}`, summaryBody, {
+    attachments: [manifestBlob],
+    name: 'Gmail Attachment Extractor'
+  });
+
+  for (const bundle of emailBundles) {
+    GmailApp.sendEmail(recipient, `Gmail attachment bundle ${bundle.index} of ${emailBundles.length} — ${runStamp}`,
+      `Attachment bundle ${bundle.index} of ${emailBundles.length}.\n\nSearch query:\n${query}\n\nDrive folder with the complete set:\n${folder.getUrl()}\n\nManifest:\n${manifestFile.getUrl()}\n\nThis email was generated so attachments appear in Gmail/Sent and can be downloaded from Gmail.`,
+      { attachments: bundle.blobs, name: 'Gmail Attachment Extractor' }
+    );
+  }
+
+  return {
+    ok: true, query, recipient, folderUrl: folder.getUrl(), manifestUrl: manifestFile.getUrl(),
+    label: CONFIG.SOURCE_LABEL, totalThreads, totalMessages, totalAttachments,
+    totalSavedToDrive, totalAttachedToEmails, emailBundleCount: emailBundles.length
+  };
+}
+
+function getBestSelfEmail_() {
+  return Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail() || '';
+}
+function getOrCreateLabel_(name) {
+  return GmailApp.getUserLabelByName(name) || GmailApp.createLabel(name);
+}
+function sanitizeForFilename_(value) {
+  return String(value || '').replace(/[\\/:*?"<>|#%\{\}\[\]~&]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 180) || 'unnamed';
+}
+function formatDateForFilename_(date) {
+  return Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyyMMdd_HHmmss');
+}
+function makeUniqueFilename_(folder, desiredName) {
+  let name = desiredName;
+  let counter = 2;
+  while (folder.getFilesByName(name).hasNext()) {
+    const dot = desiredName.lastIndexOf('.');
+    name = dot > 0 ? `${desiredName.slice(0, dot)}_${counter}${desiredName.slice(dot)}` : `${desiredName}_${counter}`;
+    counter++;
+  }
+  return name;
+}
+function rowsToCsv_(rows) {
+  return rows.map(row => row.map(cell => {
+    const value = cell instanceof Date ? Utilities.formatDate(cell, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss') : String(cell == null ? '' : cell);
+    return `"${value.replace(/"/g, '""')}"`;
+  }).join(',')).join('\n');
+}

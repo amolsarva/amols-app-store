@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Gmail Attachment Script Wingman",
+  "version": "1.0.0",
+  "description": "A tiny helper that opens Google Apps Script, provides copy/paste code, and walks you through deploying a Gmail attachment extractor.",
+  "action": {
+    "default_title": "Attachment Wingman",
+    "default_popup": "popup.html"
+  },
+  "permissions": ["tabs", "storage"],
+  "host_permissions": [
+    "https://script.google.com/*",
+    "https://mail.google.com/*"
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

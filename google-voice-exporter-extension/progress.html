@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Export progress</title>
+  <style>
+    :root{--bg:#0f1117;--surface:#1a1d27;--border:rgba(255,255,255,.08);--text:#e2e8f0;--dim:#94a3b8;--accent:#4f8ef7;--green:#34d399;}
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:18px;}
+    header{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+    .logo{width:30px;height:30px;border-radius:8px;background:rgba(79,142,247,.15);border:1px solid rgba(79,142,247,.3);display:flex;align-items:center;justify-content:center;font-size:15px;}
+    h1{font-size:15px;font-weight:700;}
+    .ver{font-size:11px;color:var(--dim);font-weight:400;}
+    .status{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:13px;}
+    .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+    .stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;}
+    .stat .v{font-size:22px;font-weight:700;line-height:1;}
+    .stat .l{font-size:11px;color:var(--dim);margin-top:3px;}
+    .bar{height:6px;border-radius:4px;background:#0d0f14;border:1px solid var(--border);overflow:hidden;margin-bottom:14px;}
+    .bar > i{display:block;height:100%;width:30%;background:var(--accent);transition:width .3s;}
+    .bar.done > i{background:var(--green);}
+    pre{background:#0d0f14;border:1px solid var(--border);border-radius:8px;color:#7eb3ff;font:11px/1.45 "SF Mono","Fira Mono",monospace;padding:8px 10px;max-height:260px;overflow:auto;white-space:pre-wrap;word-break:break-all;}
+    .hint{color:var(--dim);font-size:11.5px;margin-top:10px;}
+    .pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:6px;animation:p 1s infinite;}
+    .pulse.done{background:var(--green);animation:none;}
+    @keyframes p{0%,100%{opacity:.3}50%{opacity:1}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">📤</div>
+    <div>
+      <h1>Export progress <span class="ver" id="ver"></span></h1>
+    </div>
+  </header>
+
+  <div class="status"><span class="pulse" id="pulse"></span><span id="status-text">Waiting for export to start…</span></div>
+
+  <div class="stat-grid">
+    <div class="stat"><div class="v" id="msgs">0</div><div class="l">Messages collected</div></div>
+    <div class="stat"><div class="v" id="pass">0</div><div class="l">Scroll pass</div></div>
+  </div>
+
+  <div class="status" id="range-box" style="display:none">📅 Covering <span id="range">—</span></div>
+
+  <div class="bar" id="bar"><i id="bar-fill" style="width:5%"></i></div>
+
+  <pre id="log">No log yet.</pre>
+
+  <div class="hint">Keep the Google Voice tab visible — the export pauses if that tab is hidden or backgrounded.</div>
+
+  <script src="progress.js"></script>
+</body>
+</html>

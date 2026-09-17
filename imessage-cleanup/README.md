@@ -23,32 +23,39 @@ Extract all your iMessage photo and video attachments into organized folders by 
      metadata.json         # stats, date range, handle list, export time
      .export_status        # refresh memory for future runs
    ```
-   **(v2.2)** Per-contact exports live OUTSIDE the script's folder, in a backup root you choose. Default: `~/Documents/root/imessage-backups`. The choice is remembered across runs in `~/.config/imessage_cleanup/config`. When you enter menu `[8]` you'll get a small navigator with options to: use the remembered location, use the default, use Documents or Desktop, type a custom absolute path, browse subfolders, or create a new subfolder.
-   **(v2.5)** If the backup root already contains per-contact exports, menu `[8]` lists those previous people first and asks whether to refresh all or selected ones before you browse the full roster.
+   **(v2.2)** Per-contact exports live OUTSIDE the script's folder, in a backup root you choose. Default: `~/Documents/root/imessage-backups`. The choice is remembered across runs in `~/.config/imessage_cleanup/config`. The `Archive conversations` workflow includes a small navigator with options to: use the remembered location, use the default, use Documents or Desktop, type a custom absolute path, browse subfolders, or create a new subfolder.
+   **(v2.5)** If the backup root already contains per-contact exports, the archive workflow lists those previous people first and asks whether to refresh all or selected ones before you browse the full roster.
    **(v2.6)** Manually grouped identities are supported with `export_format=grouped_contact_v1` in `.export_status`. A grouped folder stores multiple handle ROWIDs in one archive and future refreshes update that same folder instead of splitting the person back into separate phone/email exports.
    **(v2.7)** The backup root now has a state store at `.archive_state/`. It keeps `export_history.jsonl` and `contact_aliases.json`, and asks whether to update existing archive folders in place.
    **(v2.7.1)** Archive repo folders with `messages_master.jsonl` get a dated run-log file named `YYYY-MM-DD to YYYY-MM-DD.TXT`; the script renames that file as the archive's message date range changes.
+   **(v2.7.2)** The main menu is organized by workflow: archive conversations, iCloud cleanup, settings, and tools. Contact grouping is called out directly in the archive workflow.
+   **(v2.8.3)** The first menu item is now `Update last run`, which refreshes existing archive folders from the remembered backup root without making you reselect the folder or browse contacts.
+   **(v2.8.5)** A grouped-contact folder may also be the canonical derived browse repository. Refresh atomically replaces only the exact `chat_<slug>.db`, transcript, metadata, and export state in that pinned folder; derived report/site files are preserved.
 5. Optionally deletes local attachment copies so iCloud reclaims the space
 
 ## Usage
 
 ```bash
-sudo bash imessage_cleanup.sh
+bash imessage_cleanup.sh
 ```
 
-(`sudo` is required to read the Messages database.)
+(The script automatically re-launches itself with `sudo` because administrator
+access is required to read the Messages database.)
 
-An interactive menu lets you configure everything before anything is touched:
-- Dry run mode (preview all actions without making changes)
-- Filter by sender name
-- Skip videos, images, or other file types
-- Set minimum file size filter
-- Enable/disable deletion after copy
-- **Browse contacts & export per-person archive** (menu item `[8]`)
+An interactive menu is organized by workflow:
+- **Update last run** — refresh existing archives from the remembered backup root without reselecting folders
+- **Archive conversations** — browse/export contacts, merge multiple handles into one person, or change archive folders
+- **iCloud cleanup** — delete local attachment copies and verify storage recovery
+- **Settings** — dry-run, filters, file-type skips, delete-after-copy, and output folders
+- **Tools and diagnostics** — statistics, logs, and Finder shortcuts
 
-### Browsing contacts (menu `[8]`)
+### Update last run
 
-When you press `[8]` the script first asks where you want exports written. The default is `~/Documents/root/imessage-backups`, but you can pick any folder (or create a new one) via the built-in navigator. Your choice is saved to `~/.config/imessage_cleanup/config` so next time you'll just confirm.
+Choose `Update last run` from the first screen for the normal repeat workflow. It uses the saved backup root from `~/.config/imessage_cleanup/config`, scans existing `.export_status` files, and refreshes those archive folders in place.
+
+### Archive conversations
+
+Open `Archive conversations`, then choose `Browse, export, or merge people` when you need to add people, merge handles, or change what gets exported. The script first asks where you want exports written. The default is `~/Documents/root/imessage-backups`, but you can pick any folder (or create a new one) via the built-in navigator. Your choice is saved to `~/.config/imessage_cleanup/config`.
 
 If that backup root already contains prior per-contact exports, the script reads each contact folder's `.export_status`, lists those people, and asks whether to update existing archive folders in place. Press Enter or type `r` to refresh the listed archive folders directly. Type `a` to do a full refresh of all listed contacts, type comma-separated numbers to full-refresh selected previous exports, or type `s` to skip and browse normally.
 
@@ -86,7 +93,7 @@ The handle column will display both numbers (`+44... | +32...`) for merged rows,
 At the prompt you can type:
 
 - A number (`3`) — export that one contact
-- Comma-separated numbers (`1,4,9`) — export several
+- Comma-separated numbers (`1,4,9`) — export several, then optionally merge them into one named person
 - `all` — export every contact (will ask for confirmation)
 - `/text` — filter the roster by name / handle / last-message contents
 - `n` / `p` — page through the list
@@ -119,6 +126,11 @@ At the prompt you can type:
 
 ## Changelog
 
+- **v2.8.6** — Added an anti-bifurcation guard: after a successful export, numbered Finder/iCloud conflict copies of the contact database, transcript, metadata, and refresh markers are moved into `_superseded_sources/numbered_conflict_copies` rather than remaining active beside the canonical files.
+- **v2.8.5** — Documented and supported a pinned grouped-contact export folder as the canonical browse repository. Refresh replaces the exact canonical `chat_<slug>.db` in place and preserves derived repository outputs; companion pipelines must ignore numbered Finder/iCloud conflict copies.
+- **v2.8.4** — Normal launches now auto-sudo. If the script is opened from Finder or the Mac Scripts UI without administrator privileges, it re-runs itself through `sudo` and prompts for the Mac password instead of exiting with a root-only error.
+- **v2.8.3** — Added a first-screen `Update last run` option that refreshes existing archive folders from the remembered backup root without asking for folder selection or contact browsing. The deeper Archive conversations menu still has browse/export/merge and folder-management tools.
+- **v2.7.2** — Reorganized the terminal UI around workflow submenus: Archive conversations, iCloud cleanup, Settings, and Tools and diagnostics. The archive workflow now explicitly advertises multi-select contact merging instead of hiding it behind the old menu `[8]` path.
 - **v2.7.1** — Stopped writing timestamped zip files for previous-export updates. The refresh path now updates existing archive folders in place, and archive repo folders with `messages_master.jsonl` maintain a readable `YYYY-MM-DD to YYYY-MM-DD.TXT` run-log file whose name follows the actual message date range.
 - **v2.7.0** — Added `.archive_state/export_history.jsonl`, `.archive_state/contact_aliases.json`, previous-export updates, and a prompt to combine multiple selected handles into one named grouped person.
 - **v2.6.0** — Added grouped previous-export support. A folder can declare `export_format=grouped_contact_v1` in `.export_status`; menu `[8]` then refreshes the stored combined handle list into that same folder. This keeps manually merged identities, such as one person spread across multiple phones/email, together on future updates.

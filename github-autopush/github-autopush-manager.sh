@@ -18,9 +18,6 @@ PLIST="$HOME/Library/LaunchAgents/com.amol.github-autopush.plist"
 LABEL="com.amol.github-autopush"
 SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
 RUNNER="$SCRIPT_DIR/github-autopush-runner.sh"
-INSTALL_DIR="$HOME/bin"
-INSTALL_RUNNER="$INSTALL_DIR/github-autopush-runner.sh"
-INSTALL_LOOP="$INSTALL_DIR/github-autopush-loop.sh"
 
 mkdir -p "$CONFIG_DIR"
 touch "$IGNORE_FILE" "$LEGACY_SYNC_FILE" "$HISTORY_FILE"
@@ -32,6 +29,11 @@ PULL_BEFORE_PUSH="${PULL_BEFORE_PUSH:-1}"
 AUTO_CONVERT_HTTPS="${AUTO_CONVERT_HTTPS:-1}"
 AUTO_CREATE_UPSTREAM="${AUTO_CREATE_UPSTREAM:-1}"
 COMMIT_PREFIX="${COMMIT_PREFIX:-auto: sync}"
+INSTALL_DIR="${INSTALL_DIR:-$HOME/bin}"
+
+# Derived from INSTALL_DIR (always kept in sync)
+INSTALL_RUNNER="$INSTALL_DIR/github-autopush-runner.sh"
+INSTALL_LOOP="$INSTALL_DIR/github-autopush-loop.sh"
 
 if [[ ! -f "$ROOTS_FILE" ]]; then
   cat > "$ROOTS_FILE" <<DEFAULTS
@@ -59,7 +61,11 @@ PULL_BEFORE_PUSH=$PULL_BEFORE_PUSH
 AUTO_CONVERT_HTTPS=$AUTO_CONVERT_HTTPS
 AUTO_CREATE_UPSTREAM=$AUTO_CREATE_UPSTREAM
 COMMIT_PREFIX="$COMMIT_PREFIX"
+INSTALL_DIR="$INSTALL_DIR"
 CFG
+  # Keep derived paths in sync
+  INSTALL_RUNNER="$INSTALL_DIR/github-autopush-runner.sh"
+  INSTALL_LOOP="$INSTALL_DIR/github-autopush-loop.sh"
 }
 
 is_github_url() {
@@ -352,50 +358,91 @@ manage_repos_menu() {
 }
 
 manage_roots_menu() {
-  local idx root choice n newpath tmp
+  local idx root choice n newpath tmp real_path scan_choice
   while true; do
     clear_scr
     echo "╔══════════════════════════════════════════════════════════════════════════╗"
-    echo "║                              Search Roots                               ║"
+    echo "║                           Search Roots                                  ║"
+    echo "╠══════════════════════════════════════════════════════════════════════════╣"
+    echo "║  The scanner finds ALL git repos at any depth under these root dirs.    ║"
+    echo "║  Add a parent like ~/code or / to scan broadly. Depth is configurable   ║"
+    echo "║  in Settings (currently: '"$SEARCH_MAX_DEPTH"' levels deep).                         ║"
     echo "╚══════════════════════════════════════════════════════════════════════════╝"
     echo
     idx=1
-    while IFS= read -r root; do
-      [[ -z "$root" || "$root" == \#* ]] && continue
-      if [[ -d "$(normalize "$root")" ]]; then
-        printf '  \033[1;32m%d)\033[0m %s\n' "$idx" "$root"
-      else
-        printf '  \033[1;31m%d)\033[0m %s (not found)\n' "$idx" "$root"
-      fi
-      idx=$((idx+1))
-    done < "$ROOTS_FILE"
+    if [[ ! -s "$ROOTS_FILE" ]]; then
+      echo "  (no roots configured)"
+    else
+      printf '  \033[1m%-4s %-6s %s\033[0m\n' "#" "STATUS" "PATH"
+      printf '  %-4s %-6s %s\n' "----" "------" "----"
+      while IFS= read -r root; do
+        [[ -z "$root" || "$root" == \#* ]] && continue
+        real_path="$(normalize "$root")"
+        if [[ -d "$real_path" ]]; then
+          printf '  \033[1;32m%-4s\033[0m \033[32m%-6s\033[0m %s\n' "$idx" "OK" "$root"
+        else
+          printf '  \033[1;31m%-4s\033[0m \033[31m%-6s\033[0m %s\n' "$idx" "MISS" "$root"
+        fi
+        idx=$((idx+1))
+      done < "$ROOTS_FILE"
+    fi
     echo
-    echo "  a) Add root"
-    echo "  r) Remove root"
+    echo "  a) Add a root path to scan"
+    echo "  r) Remove a root by number"
+    echo "  s) Scan now (re-discover repos from all roots)"
     echo "  d) Done"
     printf '\n  Choice: '
     read -r choice || choice=""
     choice="$(echo "$choice" | tr '[:upper:]' '[:lower:]')"
     case "$choice" in
       a|add)
-        printf '  Path to add: '; read -r newpath || newpath=""
+        echo
+        echo "  Enter the directory to scan. Examples:"
+        echo "    ~/code           (one level up from your repos)"
+        echo "    ~/Documents      (scan all projects inside Documents)"
+        echo "    ~/               (scan your entire home directory)"
+        echo "  Tab-completion works if your shell supports it."
+        printf '\n  Path to add: '
+        read -r newpath || newpath=""
         [[ -z "$newpath" ]] && continue
+        # Expand ~ manually for display/validation
+        real_path="$(normalize "$newpath")"
+        if [[ ! -d "$real_path" ]]; then
+          warn "Path not found: $real_path"
+          printf '  Add anyway? [y/N] '; read -r scan_choice || scan_choice=""
+          [[ "$scan_choice" =~ ^[Yy]$ ]] || { sleep 1; continue; }
+        fi
         echo "$newpath" >> "$ROOTS_FILE"
         sort -u "$ROOTS_FILE" -o "$ROOTS_FILE"
-        info "Added: $newpath"; sleep 1 ;;
+        info "Added: $newpath"
+        if [[ -d "$real_path" ]]; then
+          printf '  Scan for repos under this path now? [Y/n] '; read -r scan_choice || scan_choice=""
+          if [[ ! "$scan_choice" =~ ^[Nn]$ ]]; then
+            info "Scanning $real_path (depth $SEARCH_MAX_DEPTH)..."
+            discover_all_repos
+            info "Found $(repo_count) total repos across all roots."
+          fi
+        fi
+        sleep 1 ;;
       r|remove)
-        printf '  Remove root number: '; read -r n || n=""
+        printf '  Remove root number (or Enter to cancel): '; read -r n || n=""
+        [[ -z "$n" ]] && continue
         if echo "$n" | grep -qE '^[0-9]+$'; then
           tmp="$CONFIG_DIR/.roots.$$"
           awk -v drop="$n" 'BEGIN{i=0} /^[[:space:]]*($|#)/{print; next} {i++; if(i!=drop) print}' "$ROOTS_FILE" > "$tmp"
           mv -f "$tmp" "$ROOTS_FILE"
-          info "Removed root #$n"
+          info "Removed root #$n."
         else
           warn "Enter a number."
         fi
         sleep 1 ;;
+      s|scan)
+        info "Scanning all roots (depth $SEARCH_MAX_DEPTH)..."
+        discover_all_repos
+        info "Done — found $(repo_count) repos. Press Enter to continue."
+        read -r _ ;;
       d|done|q|"") return ;;
-      *) warn "Unknown choice."; sleep 1 ;;
+      *) warn "Unknown choice: $choice"; sleep 1 ;;
     esac
   done
 }
@@ -414,16 +461,39 @@ settings_menu() {
     printf '  4) Convert HTTPS to SSH      %s\n' "$AUTO_CONVERT_HTTPS"
     printf '  5) Create missing upstreams  %s\n' "$AUTO_CREATE_UPSTREAM"
     printf '  6) Commit message prefix     %s\n' "$COMMIT_PREFIX"
+    printf '  7) Script install directory  %s\n' "$INSTALL_DIR"
     echo "  d) Done"
     printf '\n  Choice: '
     read -r choice || choice=""
     case "$choice" in
-      1) printf '  New interval: '; read -r value; echo "$value" | grep -qE '^[0-9]+$' && INTERVAL="$value" ;;
-      2) printf '  New max depth: '; read -r value; echo "$value" | grep -qE '^[0-9]+$' && SEARCH_MAX_DEPTH="$value" ;;
+      1) printf '  New interval (seconds): '; read -r value; echo "$value" | grep -qE '^[0-9]+$' && INTERVAL="$value" ;;
+      2) printf '  New max depth (levels): '; read -r value; echo "$value" | grep -qE '^[0-9]+$' && SEARCH_MAX_DEPTH="$value" ;;
       3) [[ "$PULL_BEFORE_PUSH" == "1" ]] && PULL_BEFORE_PUSH=0 || PULL_BEFORE_PUSH=1 ;;
       4) [[ "$AUTO_CONVERT_HTTPS" == "1" ]] && AUTO_CONVERT_HTTPS=0 || AUTO_CONVERT_HTTPS=1 ;;
       5) [[ "$AUTO_CREATE_UPSTREAM" == "1" ]] && AUTO_CREATE_UPSTREAM=0 || AUTO_CREATE_UPSTREAM=1 ;;
       6) printf '  New prefix: '; read -r value; [[ -n "$value" ]] && COMMIT_PREFIX="$value" ;;
+      7)
+        echo
+        echo "  Where should runner/loop scripts be installed?"
+        echo "  Current: $INSTALL_DIR"
+        echo "  Examples: ~/bin   /usr/local/bin   ~/scripts"
+        printf '  New install directory (Enter to keep current): '
+        read -r value || value=""
+        if [[ -n "$value" ]]; then
+          local real_new
+          real_new="$(normalize "$value")"
+          if [[ ! -d "$real_new" ]]; then
+            printf '  Directory does not exist. Create it? [Y/n] '; read -r choice || choice=""
+            if [[ ! "$choice" =~ ^[Nn]$ ]]; then
+              mkdir -p "$real_new" && info "Created: $real_new" || { warn "Could not create $real_new"; sleep 1; continue; }
+            else
+              sleep 1; continue
+            fi
+          fi
+          INSTALL_DIR="$value"
+          info "Install directory set to: $INSTALL_DIR"
+          sleep 1
+        fi ;;
       d|done|q|"") save_config; return ;;
       *) warn "Unknown choice."; sleep 1 ;;
     esac
@@ -487,6 +557,7 @@ show_dashboard() {
   printf '  %-22s %s\n' "Agent:" "$agent_st"
   printf '  %-22s %s\n' "Session loop:" "$(loop_status)"
   printf '  %-22s %s\n' "Interval:" "${INTERVAL}s"
+  printf '  %-22s %s\n' "Install dir:" "$INSTALL_DIR"
   printf '  %-22s %s\n' "Runner:" "$INSTALL_RUNNER"
   printf '  %-22s %s\n' "Last run:" "$last_ts"
   printf '  %-22s %s managed / %s discovered\n' "Repos:" "$(managed_count)" "$(repo_count)"
@@ -500,6 +571,52 @@ show_dashboard() {
   echo
 }
 
+quick_scan_menu() {
+  local scanpath real_path
+  clear_scr
+  echo "╔══════════════════════════════════════════════════════════════════════════╗"
+  echo "║                        Quick Scan Any Path                              ║"
+  echo "╠══════════════════════════════════════════════════════════════════════════╣"
+  echo "║  Scan a directory for git repos WITHOUT adding it to your roots list.   ║"
+  echo "║  Useful for one-off discovery. To permanently add a path, use           ║"
+  echo "║  option 5 (Search roots) instead.                                       ║"
+  echo "╚══════════════════════════════════════════════════════════════════════════╝"
+  echo
+  echo "  Current roots:"
+  while IFS= read -r root; do
+    [[ -z "$root" || "$root" == \#* ]] && continue
+    printf '    - %s\n' "$root"
+  done < "$ROOTS_FILE"
+  echo
+  printf '  Path to scan (or Enter to cancel): '
+  read -r scanpath || scanpath=""
+  [[ -z "$scanpath" ]] && return
+  real_path="$(normalize "$scanpath")"
+  if [[ ! -d "$real_path" ]]; then
+    warn "Not a directory: $real_path"
+    sleep 1; return
+  fi
+  echo
+  info "Scanning $real_path (depth $SEARCH_MAX_DEPTH)..."
+  # Temporarily add path, scan, then optionally keep it
+  local tmp_roots="$CONFIG_DIR/.roots_tmp.$$"
+  cp "$ROOTS_FILE" "$tmp_roots"
+  echo "$real_path" >> "$ROOTS_FILE"
+  discover_all_repos
+  cp "$tmp_roots" "$ROOTS_FILE"
+  rm -f "$tmp_roots"
+  info "Found $(repo_count) total repos (across all roots, including this path)."
+  echo
+  printf '  Add %s permanently to roots? [y/N] ' "$scanpath"
+  read -r scanpath || scanpath=""
+  if [[ "$scanpath" =~ ^[Yy]$ ]]; then
+    echo "$real_path" >> "$ROOTS_FILE"
+    sort -u "$ROOTS_FILE" -o "$ROOTS_FILE"
+    info "Added to roots."
+  fi
+  press_enter
+}
+
 main_menu() {
   local choice
   while true; do
@@ -508,11 +625,12 @@ main_menu() {
     echo "  2) Install or restart persistent agent"
     echo "  3) Stop persistent agent"
     echo "  4) Run sync now"
-    echo "  5) Search roots"
-    echo "  6) Settings"
+    echo "  5) Search roots (where to scan)"
+    echo "  6) Settings (interval, depth, install dir, …)"
     echo "  7) Clear stale locks"
     echo "  8) Start session loop fallback"
     echo "  9) Stop session loop fallback"
+    echo "  /) Quick-scan any path (one-off)"
     echo "  s) Show discovered repos"
     echo "  q) Quit"
     printf '\n  Choice: '
@@ -527,6 +645,7 @@ main_menu() {
       7) clear_locks; press_enter ;;
       8) start_loop; sleep 1 ;;
       9) stop_loop; sleep 1 ;;
+      /|"?") quick_scan_menu ;;
       s) list_repos; press_enter ;;
       q|quit|exit) clear_scr; exit 0 ;;
       *) warn "Unknown choice."; sleep 1 ;;

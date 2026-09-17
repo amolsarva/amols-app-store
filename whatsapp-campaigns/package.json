@@ -1,0 +1,21 @@
+{
+  "name": "whatsapp-campaign-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local search, review, separate-send, archive, and reply-aware bump studio for WhatsApp",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js --dry-run",
+    "doctor": "node src/app.js --doctor",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "enquirer": "2.4.1",
+    "puppeteer": "24.16.0",
+    "qrcode-terminal": "0.12.0",
+    "whatsapp-web.js": "1.34.7"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

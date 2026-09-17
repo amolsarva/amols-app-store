@@ -1,0 +1,13 @@
+#!/bin/bash
+# Launcher stub — runs inside the .app bundle
+DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT="$DIR/../Resources/launcher.py"
+
+# Prefer the python3 from common install locations
+for PY in /usr/bin/python3 /usr/local/bin/python3 /opt/homebrew/bin/python3 python3; do
+    if command -v "$PY" &>/dev/null; then
+        exec "$PY" "$SCRIPT"
+    fi
+done
+
+osascript -e 'display alert "python3 not found" message "Install Python 3 from python.org to run Mac Scripts Launcher."'

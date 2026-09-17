@@ -1,0 +1,10 @@
+{
+  "searchPageSize": 100,
+  "searchPages": 50,
+  "fallbackMessagesPerChat": 0,
+  "replyScanLimit": 500,
+  "minimumDelayMs": 2500,
+  "maximumDelayMs": 5000,
+  "browserHeadless": true,
+  "browserExecutable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+}

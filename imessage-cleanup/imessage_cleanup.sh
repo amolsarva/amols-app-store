@@ -1,10 +1,11 @@
 #!/bin/bash
 # =============================================================================
 #  iMessage Attachment Extractor & iCloud Storage Cleaner
-#  Version: 2.7.1
+#  Version: 2.8.6
 #  macOS 12+ (Monterey, Ventura, Sonoma, Sequoia)
 #
-#  Run as:  sudo bash imessage_cleanup.sh
+#  Run as:  bash imessage_cleanup.sh
+#  The script automatically re-launches itself with sudo when needed.
 #
 #  What it does:
 #    1. Reads ~/Library/Messages/chat.db (copied to /tmp for safety)
@@ -16,7 +17,7 @@
 #    5. Logs everything to ~/Desktop/iMessage_Attachments/cleanup.log
 #
 #  v2.1.0:
-#    6. Browse contacts TUI [menu 8]: lists every iMessage handle ranked by
+#    6. Archive conversations workflow: lists every iMessage handle ranked by
 #       recency, shows contact name when available (or phone/email + a snippet
 #       of the last message as a prompt when not), lets you pick one or more,
 #       and for each pick produces a per-person folder containing:
@@ -42,7 +43,7 @@
 #    - Added a 30s sqlite .timeout and progress logging during roster build.
 #
 #  v2.4.0 ROBUSTNESS:
-#    - Menu [8] roster merge is Bash 3.2 compatible again (no associative
+#    - Contact roster merge is Bash 3.2 compatible again (no associative
 #      arrays), with clearer labels for merged / unsaved contacts.
 #    - Per-contact exports are restartable: DB/transcript writes are atomic,
 #      attachment copies use a per-contact manifest, and reruns repair partial
@@ -51,7 +52,7 @@
 #      escaping, and clearer status messages for partial success/failure.
 #
 #  v2.5.0 REFRESH MEMORY + ACCESSIBILITY:
-#    - Menu [8] remembers previous per-contact exports from .export_status
+#    - Archive workflow remembers previous per-contact exports from .export_status
 #      files and asks whether to refresh those same people before browsing.
 #    - TUI colors now use a high-contrast palette that avoids green/cyan/dim
 #      text for core menu labels, so it is readable on light and dark themes.
@@ -77,6 +78,68 @@
 #    - The script renames an existing placeholder or stale dated run-log file
 #      whenever the message date range changes, then rewrites it from the
 #      archive history ledger.
+#
+#  v2.7.2 MENU CLEANUP:
+#    - Main menu reorganized around workflows: archive, iCloud cleanup,
+#      settings, and tools.
+#    - Per-contact grouping/merge is now called out in the archive workflow.
+#
+#  v2.8.0 ALIAS-AWARE ROSTER + SIZES + AUTO-REFRESH:
+#    - Saved groups in .archive_state/contact_aliases.json (e.g. a person with
+#      several phones/an email that Contacts.app never linked together) now
+#      take precedence when the roster is built, so they show as one named
+#      row every run — not just at export time.
+#    - The "update archives?" table now shows on-disk size per archive plus a
+#      backup-root total.
+#    - New --auto-refresh flag: skips all menus/prompts and refreshes existing
+#      per-contact archives in place (same as pressing Enter at "update
+#      archives?"), for scripted/unattended runs.
+#
+#  v2.8.1 CONTACTS BUGFIX — READ ALL ADDRESSBOOK SOURCES:
+#    - Contacts resolution used to copy/query only the single top-level
+#      AddressBook-v22.abcddb, which holds "On My Mac" local contacts ONLY.
+#      Anyone whose Contacts are entirely iCloud/Google/Exchange-synced has
+#      an empty local db, so this silently resolved 0 phones/0 emails every
+#      run ("Loaded 0 phone(s) and 0 email(s) from Contacts.") even with
+#      hundreds of real contacts and Full Disk Access granted.
+#    - Now copies AND queries the top-level db PLUS every per-account db
+#      under AddressBook/Sources/<UUID>/ (one per synced account), merging
+#      results. This is where iCloud-synced contacts actually live.
+#
+#  v2.8.2 INTERNATIONAL PHONE NORMALIZATION FIX:
+#    - Alias-group matching used a naive "last 10 digits" key, which is
+#      correct for US numbers but silently breaks for numbers where the
+#      country code and trunk-prefix lengths don't line up (e.g. Belgium:
+#      "+32472817175" -> last10 "2472817175", but the same number typed
+#      nationally as "0472817175" -> last10 "0472817175" — different keys,
+#      same phone). This caused real gaps: messages logged under whichever
+#      format didn't match the registered handle never merged into that
+#      person's archive (found via a report showing zero incoming messages
+#      for a two-month stretch that should not have been empty).
+#    - New phone_norm_variants() generates last-10 AND last-9 keys, with and
+#      without a leading trunk 0 stripped, and matching now checks all of
+#      them — so both formats of the same number resolve to the same group.
+#
+#  v2.8.3 ONE-CLICK LAST RUN UPDATE:
+#    - The first menu item is now "Update last run" and refreshes existing
+#      archive folders from the remembered backup root without asking the user
+#      to reselect the folder or browse contacts.
+#
+#  v2.8.4 AUTO-SUDO LAUNCH:
+#    - Launching from Finder/Mac Scripts without sudo now re-runs the same
+#      command through sudo instead of stopping at the startup check.
+#
+#  v2.8.5 CANONICAL CONTACT REPOSITORY:
+#    - A pinned grouped-contact export folder may also be the derived browse
+#      repository. Refresh continues to replace the exact canonical
+#      chat_<slug>.db atomically while preserving unrelated derived files.
+#    - Numbered Finder/iCloud conflict copies are not exporter outputs and are
+#      never selected as the canonical database by the companion pipeline.
+#
+#  v2.8.6 ANTI-BIFURCATION GUARD:
+#    - After a successful atomic export, numbered Finder/iCloud conflict copies
+#      are moved into _superseded_sources instead of remaining active beside
+#      the canonical database, transcript, metadata, or refresh state.
 #
 #  Safety:
 #    - Never modifies anything without explicit confirmation
@@ -110,7 +173,7 @@ WHT="$BOLD";       DIM=''
 BLINK='\033[5m';   ULINE='\033[4m'
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-SCRIPT_VERSION="2.7.1"
+SCRIPT_VERSION="2.8.6"
 SCRIPT_NAME="iMessage Attachment Extractor & iCloud Cleaner"
 
 # Paths – resolved relative to the real user's home (handles sudo)
@@ -119,13 +182,24 @@ REAL_HOME=$(eval echo "~$REAL_USER")
 
 MESSAGES_DB="$REAL_HOME/Library/Messages/chat.db"
 ATTACHMENTS_DIR="$REAL_HOME/Library/Messages/Attachments"
+# NOTE: this top-level db only holds "On My Mac" local contacts and is often
+# EMPTY — contacts synced via iCloud/Google/Exchange live in per-account dbs
+# under AddressBook/Sources/<UUID>/. See ADDRESSBOOK_SOURCES_GLOB below and
+# copy_databases(), which copies all of them, not just this one.
 ADDRESSBOOK_DB="$REAL_HOME/Library/Application Support/AddressBook/AddressBook-v22.abcddb"
+ADDRESSBOOK_SOURCES_GLOB="$REAL_HOME/Library/Application Support/AddressBook/Sources"
 
 DESKTOP="$REAL_HOME/Desktop"
 OUTPUT_ROOT="$DESKTOP/iMessage_Attachments"
 LOG_FILE="$OUTPUT_ROOT/cleanup.log"
+# Ensure the log directory exists before any log() call. Some menu paths
+# (e.g. the per-contact export menu) write to LOG_FILE before the main
+# extraction flow has had a chance to create OUTPUT_ROOT, which produced
+# "No such file or directory" errors on the log redirect.
+mkdir -p "$OUTPUT_ROOT" 2>/dev/null || true
 DB_TMP="/tmp/imessage_chat_$$.db"       # Scratch copy of chat.db
-ADDRESSBOOK_TMP="/tmp/imessage_ab_$$.db"
+ADDRESSBOOK_TMP="/tmp/imessage_ab_$$.db"  # first/primary copy (back-compat)
+ADDRESSBOOK_TMP_LIST=()                   # ALL copied AddressBook dbs (top-level + every iCloud/Google/Exchange source)
 MANIFEST_FILE="$OUTPUT_ROOT/.manifest"   # Tracks att_ids already copied (for incremental runs)
 
 # ── Per-contact backup root (v2.2.0) ──────────────────────────────────────────
@@ -136,6 +210,11 @@ CONFIG_DIR="$REAL_HOME/.config/imessage_cleanup"
 CONFIG_FILE="$CONFIG_DIR/config"
 DEFAULT_BACKUP_ROOT="$REAL_HOME/Documents/root/imessage-backups"
 BACKUP_ROOT=""   # populated by load_config / pick_backup_dir
+
+# Where "Clone messages.db" (Tools menu) drops its standalone copy. Asked on
+# first use, then remembered in CONFIG_FILE across runs. Empty until set.
+DEFAULT_CLONE_DEST="$REAL_HOME/Documents/root/imessage-backups"
+CLONE_DEST=""
 
 # Runtime options (changed by menu)
 DRY_RUN=false
@@ -281,13 +360,18 @@ ask_input() {
     local prompt="$1"
     local default="${2:-}"
     local result
+    # IMPORTANT: the prompt must go to stderr, not stdout. This function's
+    # stdout is captured by callers via $(ask_input ...), so anything printed
+    # to stdout other than the final answer ends up *inside* the returned
+    # value. (This was the cause of group names becoming the literal prompt
+    # text "Name for this grouped person:".)
     if [[ -n "$default" ]]; then
-        printf "  ${BYLW}?${RESET}  %s [%s]: " "$prompt" "$default"
+        printf "  ${BYLW}?${RESET}  %s [%s]: " "$prompt" "$default" >&2
     else
-        printf "  ${BYLW}?${RESET}  %s: " "$prompt"
+        printf "  ${BYLW}?${RESET}  %s: " "$prompt" >&2
     fi
     read -r result </dev/tty
-    echo "${result:-$default}"
+    printf '%s' "${result:-$default}"
 }
 
 press_any_key() {
@@ -345,11 +429,12 @@ human_bytes() {
 }
 
 # ── Prerequisite checks ───────────────────────────────────────────────────────
-check_root() {
+ensure_root_or_reexec() {
     if [[ $EUID -ne 0 ]]; then
-        err "This script must be run as root (sudo)."
-        info "Run:  sudo bash $0"
-        exit 1
+        info "Administrator access is required to read Messages."
+        info "Re-launching with sudo; enter your Mac password if prompted."
+        echo
+        exec sudo /bin/bash "$0" "$@"
     fi
 }
 
@@ -417,17 +502,128 @@ copy_databases() {
     ok "chat.db copied to $DB_TMP"
     log_action "Copied chat.db → $DB_TMP"
 
+    spinner_start "Copying AddressBook (all accounts) …"
+    ADDRESSBOOK_TMP_LIST=()
+    local n=0 src_db copied_any=false
+
+    # Top-level db: "On My Mac" local contacts only. Often empty if every
+    # contact is synced (iCloud/Google/Exchange) rather than local.
     if [[ -f "$ADDRESSBOOK_DB" ]]; then
-        spinner_start "Copying AddressBook …"
-        cp "$ADDRESSBOOK_DB" "$ADDRESSBOOK_TMP" 2>/dev/null || true
-        chmod 644 "$ADDRESSBOOK_TMP" 2>/dev/null || true
-        spinner_stop
-        ok "AddressBook copied"
-        log_action "Copied AddressBook → $ADDRESSBOOK_TMP"
+        local dest="/tmp/imessage_ab_${$}_local.db"
+        if cp "$ADDRESSBOOK_DB" "$dest" 2>/dev/null; then
+            chmod 644 "$dest" 2>/dev/null || true
+            ADDRESSBOOK_TMP_LIST+=("$dest")
+            copied_any=true
+        fi
+    fi
+
+    # Per-account dbs: this is where iCloud/Google/Exchange-synced contacts
+    # actually live — one AddressBook-v22.abcddb per account, under a UUID
+    # folder. Missing this is why "Loaded 0 phone(s) and 0 email(s)" happens
+    # for anyone whose contacts are entirely cloud-synced (the common case).
+    if [[ -d "$ADDRESSBOOK_SOURCES_GLOB" ]]; then
+        while IFS= read -r src_db; do
+            [[ -z "$src_db" ]] && continue
+            n=$(( n + 1 ))
+            local dest="/tmp/imessage_ab_${$}_src${n}.db"
+            if cp "$src_db" "$dest" 2>/dev/null; then
+                chmod 644 "$dest" 2>/dev/null || true
+                ADDRESSBOOK_TMP_LIST+=("$dest")
+                copied_any=true
+            fi
+        done < <(find "$ADDRESSBOOK_SOURCES_GLOB" -mindepth 2 -maxdepth 2 -name "AddressBook-v22.abcddb" 2>/dev/null)
+    fi
+
+    spinner_stop
+    if $copied_any; then
+        # Back-compat: code that only knows about a single $ADDRESSBOOK_TMP
+        # (the legacy per-handle lookup_contact_name) still gets *a* db.
+        ADDRESSBOOK_TMP="${ADDRESSBOOK_TMP_LIST[0]}"
+        ok "AddressBook copied (${#ADDRESSBOOK_TMP_LIST[@]} account database(s): local + iCloud/Google/Exchange sources)"
+        log_action "Copied AddressBook → ${ADDRESSBOOK_TMP_LIST[*]}"
     else
-        warn "AddressBook database not found – will use handle IDs as names"
+        warn "No AddressBook database found (checked local + $ADDRESSBOOK_SOURCES_GLOB) – will use handle IDs as names"
+        warn "If Contacts.app has entries you expect to see, check System Settings →"
+        warn "Privacy & Security → Contacts, and that Terminal has access."
         ADDRESSBOOK_TMP=""
     fi
+}
+
+clone_messages_db() {
+    # "Just clone the messages.db and save it" — drop a standalone, queryable
+    # copy of chat.db into the output folder so you can run your own SQL against
+    # it (and search anything else) outside this script.
+    section "Clone messages.db"
+
+    # Destination: ask, defaulting to wherever it went last time (remembered in
+    # CONFIG_FILE), or the default backups folder on first use. No longer hard-
+    # wired to the Desktop.
+    local suggested="${CLONE_DEST:-$DEFAULT_CLONE_DEST}"
+    echo
+    [[ -n "$CLONE_DEST" ]] && info "Last saved to: ${BOLD}$CLONE_DEST${RESET}"
+    local clone_dir
+    clone_dir=$(ask_input "Save the cloned messages.db into which folder?" "$suggested")
+    # Expand a leading ~ if the user typed one.
+    clone_dir="${clone_dir/#\~/$REAL_HOME}"
+    if [[ -z "$clone_dir" ]]; then
+        warn "No folder given — cancelled."
+        press_any_key
+        return 1
+    fi
+    if ! mkdir -p "$clone_dir" 2>/dev/null; then
+        err "Could not create or write to: $clone_dir"
+        press_any_key
+        return 1
+    fi
+
+    # Remember this choice for next time.
+    if [[ "$clone_dir" != "$CLONE_DEST" ]]; then
+        CLONE_DEST="$clone_dir"
+        save_config
+    fi
+
+    local stamp; stamp=$(date +%Y%m%d_%H%M%S)
+    local dest="$clone_dir/chat_${stamp}.db"
+
+    # Prefer the live DB via SQLite's .backup (folds in WAL, gets a consistent
+    # snapshot even if anything is mid-write). Fall back to copying the scratch
+    # copy we already made at startup, then a plain cp as last resort.
+    spinner_start "Cloning messages.db …"
+    if sqlite3 "$MESSAGES_DB" ".timeout 30000" ".backup '$dest'" 2>/dev/null && [[ -s "$dest" ]]; then
+        spinner_stop
+        ok "Cloned via SQLite .backup (consistent snapshot)"
+    elif [[ -f "$DB_TMP" ]] && cp "$DB_TMP" "$dest" 2>/dev/null; then
+        spinner_stop
+        ok "Cloned from the startup scratch copy"
+    elif cp "$MESSAGES_DB" "$dest" 2>/dev/null; then
+        spinner_stop
+        warn "SQLite .backup unavailable — used a plain file copy (may miss un-checkpointed WAL data)"
+    else
+        spinner_stop
+        err "Could not clone messages.db (check Full Disk Access)."
+        press_any_key
+        return 1
+    fi
+
+    chmod 644 "$dest" 2>/dev/null || true
+    # Make it owned by the real user, not root, since we run under sudo.
+    chown "$REAL_USER" "$dest" 2>/dev/null || true
+
+    local sz; sz=$(stat -f%z "$dest" 2>/dev/null || echo 0)
+    local nmsgs; nmsgs=$(sqlite3 "$dest" "SELECT COUNT(*) FROM message;" 2>/dev/null || echo "?")
+
+    ok "Saved to: ${BOLD}$dest${RESET}"
+    bullet "Size      : $(human_bytes ${sz:-0})"
+    bullet "Messages  : $nmsgs rows"
+    echo
+    info "Query it directly, e.g.:"
+    echo -e "  ${DIM}sqlite3 \"$dest\" \"SELECT text FROM message WHERE text LIKE '%dinner%' LIMIT 20;\"${RESET}"
+    log_action "Cloned messages.db → $dest (size=$sz msgs=$nmsgs)"
+
+    if ask_yn "Open the folder in Finder now?" y; then
+        open "$clone_dir" 2>/dev/null || info "Could not open Finder (headless session?)"
+    fi
+    press_any_key
 }
 
 db_query() {
@@ -460,6 +656,26 @@ normalize_phone() {
     local digits; digits=$(echo "$raw" | tr -cd '0-9')
     # Return last 10 digits
     echo "${digits: -10}"
+}
+
+# A single "last 10 digits" key works for US numbers (country code 1 = 1
+# digit, same length as a leading trunk 0) but silently breaks for numbers
+# where the country code and trunk-prefix lengths don't line up — e.g.
+# Belgium (+32, 2 digits) vs a locally-typed "0472817175" (1-digit trunk):
+# +32472817175 -> last10 "2472817175", but 0472817175 -> last10 "0472817175".
+# Same real number, two different keys, so messages logged under whichever
+# format didn't match silently never merge into the person's archive. This
+# emits every plausible candidate key (last-10 and last-9, with/without a
+# leading trunk 0 stripped) so matching can check "any of these", not just
+# one fixed-width slice. One raw number -> up to 4 lines, deduped.
+phone_norm_variants() {
+    local raw="$1"
+    local digits; digits=$(printf '%s' "$raw" | tr -cd '0-9')
+    [[ -z "$digits" ]] && return 0
+    local stripped="$digits"
+    [[ "$stripped" == 0* ]] && stripped="${stripped#0}"
+    printf '%s\n' "${digits: -10}" "${digits: -9}" "${stripped: -10}" "${stripped: -9}" \
+        | awk 'NF && !seen[$0]++'
 }
 
 lookup_contact_name() {
@@ -1441,11 +1657,15 @@ show_stats_screen() {
     press_any_key
 }
 
-# ── Options menu ──────────────────────────────────────────────────────────────
+# ── Settings menu ─────────────────────────────────────────────────────────────
 show_options_menu() {
     while true; do
         banner
-        section "Options"
+        section "Settings"
+        echo
+        echo -e "  ${DIM}These settings affect the legacy Desktop sender extraction and${RESET}"
+        echo -e "  ${DIM}iCloud cleanup safety checks. Per-person archives use their own${RESET}"
+        echo -e "  ${DIM}backup root under Archive conversations.${RESET}"
         echo
         printf "  ${BBLU}[1]${RESET}  Dry-run mode          : "
         $DRY_RUN   && echo -e "${BGRN}ON${RESET}"  || echo -e "${DIM}off${RESET}"
@@ -1488,7 +1708,7 @@ show_options_menu() {
         fi
 
         echo
-        echo -e "  ${BBLU}[0]${RESET}  Back to main menu"
+        echo -e "  ${BBLU}[0]${RESET}  Back"
         echo
         printf "  Select option: "
         read -r opt </dev/tty
@@ -1570,6 +1790,8 @@ load_config() {
     fi
     # If still empty after sourcing, fall back to default.
     [[ -z "$BACKUP_ROOT" ]] && BACKUP_ROOT="$DEFAULT_BACKUP_ROOT"
+    # CLONE_DEST stays empty if never set, so clone_messages_db can tell first
+    # run from a remembered one; it falls back to DEFAULT_CLONE_DEST at use.
     return 0
 }
 
@@ -1582,6 +1804,7 @@ save_config() {
     cat > "$CONFIG_FILE" <<EOF
 # imessage_cleanup config — auto-generated, safe to edit
 BACKUP_ROOT="$BACKUP_ROOT"
+CLONE_DEST="$CLONE_DEST"
 EOF
     [[ -n "${SUDO_USER:-}" ]] && chown "$SUDO_USER" "$CONFIG_FILE" 2>/dev/null || true
 }
@@ -1832,9 +2055,14 @@ sync_archive_repo_run_logs() {
 # ── Folder navigator: lets the user pick / type / create a backup folder ─────
 # Returns 0 with $BACKUP_ROOT set if user confirms, 1 if cancelled.
 pick_backup_dir() {
+    if [[ "${AUTO_REFRESH:-false}" == "true" && -n "$BACKUP_ROOT" ]]; then
+        mkdir -p "$BACKUP_ROOT" 2>/dev/null || true
+        info "Auto-refresh: using saved backup folder $BACKUP_ROOT"
+        return 0
+    fi
     while true; do
         banner
-        section "Choose where to store per-contact exports"
+        section "Archive backup folder"
         echo
         echo -e "  ${BOLD}Current:${RESET}  ${BCYN}$BACKUP_ROOT${RESET}"
         if [[ -d "$BACKUP_ROOT" ]]; then
@@ -1845,7 +2073,7 @@ pick_backup_dir() {
             echo -e "  ${DIM}Does not exist yet — will be created on first export${RESET}"
         fi
         echo
-        echo -e "  ${BBLU}[1]${RESET}  Use current location (above)"
+        echo -e "  ${BBLU}[1]${RESET}  Use this archive folder"
         echo -e "  ${BBLU}[2]${RESET}  Default: ${DIM}$DEFAULT_BACKUP_ROOT${RESET}"
         echo -e "  ${BBLU}[3]${RESET}  Documents:  ${DIM}$REAL_HOME/Documents${RESET}"
         echo -e "  ${BBLU}[4]${RESET}  Desktop:    ${DIM}$REAL_HOME/Desktop${RESET}"
@@ -1854,7 +2082,7 @@ pick_backup_dir() {
         echo -e "  ${BBLU}[7]${RESET}  Create new subfolder inside current location"
         echo -e "  ${BBLU}[0]${RESET}  Cancel"
         echo
-        printf "  Select: "
+        printf "  Select option: "
         read -r choice </dev/tty
 
         case "$choice" in
@@ -2027,20 +2255,33 @@ prefetch_address_book() {
     AB_PHONE_KEYS=(); AB_PHONE_NAMES=()
     AB_EMAIL_KEYS=(); AB_EMAIL_NAMES=()
 
-    [[ -z "$ADDRESSBOOK_TMP" || ! -f "$ADDRESSBOOK_TMP" ]] && return 0
+    # Query every copied AddressBook db — local "On My Mac" contacts AND
+    # every iCloud/Google/Exchange source db — not just one. A contact list
+    # that's entirely cloud-synced has NOTHING in the local db, so relying
+    # on a single db (the old bug) silently loaded zero contacts.
+    local dbs=()
+    if [[ ${#ADDRESSBOOK_TMP_LIST[@]} -gt 0 ]]; then
+        dbs=("${ADDRESSBOOK_TMP_LIST[@]}")
+    elif [[ -n "$ADDRESSBOOK_TMP" && -f "$ADDRESSBOOK_TMP" ]]; then
+        dbs=("$ADDRESSBOOK_TMP")
+    fi
+    [[ ${#dbs[@]} -eq 0 ]] && return 0
 
-    # Phones: get all (phone, first, last) and normalize phone to last-10 digits.
-    local first last fullnum norm n
-    while IFS=$'\t' read -r first last fullnum; do
-        [[ -z "$fullnum" ]] && continue
-        norm=$(printf '%s' "$fullnum" | tr -cd '0-9')
-        norm="${norm: -10}"
-        [[ -z "$norm" ]] && continue
-        n=$(_trim "$first $last")
-        [[ -z "$n" ]] && continue
-        AB_PHONE_KEYS+=("$norm")
-        AB_PHONE_NAMES+=("$n")
-    done < <(sqlite3 -separator $'\t' "$ADDRESSBOOK_TMP" "
+    local db first last fullnum norm n addr k
+    for db in "${dbs[@]}"; do
+        [[ -f "$db" ]] || continue
+
+        # Phones: get all (phone, first, last) and normalize to last-10 digits.
+        while IFS=$'\t' read -r first last fullnum; do
+            [[ -z "$fullnum" ]] && continue
+            norm=$(printf '%s' "$fullnum" | tr -cd '0-9')
+            norm="${norm: -10}"
+            [[ -z "$norm" ]] && continue
+            n=$(_trim "$first $last")
+            [[ -z "$n" ]] && continue
+            AB_PHONE_KEYS+=("$norm")
+            AB_PHONE_NAMES+=("$n")
+        done < <(sqlite3 -separator $'\t' "$db" "
 SELECT COALESCE(r.ZFIRSTNAME,''),
        COALESCE(r.ZLASTNAME,''),
        COALESCE(p.ZFULLNUMBER,'')
@@ -2048,22 +2289,166 @@ FROM ZABCDRECORD r
 JOIN ZABCDPHONENUMBER p ON r.Z_PK = p.ZOWNER
 WHERE p.ZFULLNUMBER IS NOT NULL;" 2>/dev/null)
 
-    # Emails
-    local addr k
-    while IFS=$'\t' read -r first last addr; do
-        [[ -z "$addr" ]] && continue
-        k=$(printf '%s' "$addr" | tr '[:upper:]' '[:lower:]')
-        n=$(_trim "$first $last")
-        [[ -z "$n" ]] && continue
-        AB_EMAIL_KEYS+=("$k")
-        AB_EMAIL_NAMES+=("$n")
-    done < <(sqlite3 -separator $'\t' "$ADDRESSBOOK_TMP" "
+        # Emails
+        while IFS=$'\t' read -r first last addr; do
+            [[ -z "$addr" ]] && continue
+            k=$(printf '%s' "$addr" | tr '[:upper:]' '[:lower:]')
+            n=$(_trim "$first $last")
+            [[ -z "$n" ]] && continue
+            AB_EMAIL_KEYS+=("$k")
+            AB_EMAIL_NAMES+=("$n")
+        done < <(sqlite3 -separator $'\t' "$db" "
 SELECT COALESCE(r.ZFIRSTNAME,''),
        COALESCE(r.ZLASTNAME,''),
        COALESCE(e.ZADDRESS,'')
 FROM ZABCDRECORD r
 JOIN ZABCDEMAILADDRESS e ON r.Z_PK = e.ZOWNER
 WHERE e.ZADDRESS IS NOT NULL;" 2>/dev/null)
+    done
+}
+
+# ── Saved-group aliases (.archive_state/contact_aliases.json) ────────────────
+# Independent of macOS Contacts: this is where manually-grouped people (e.g.
+# one person with a UK number, a Belgian number, and an email that Contacts
+# never linked together) live permanently once grouped via export_grouped_picks.
+# Prefetched into parallel arrays so build_roster can merge by *saved group*
+# with top precedence — before falling back to Contacts.app or raw-handle
+# matching. This is what keeps someone like Laura (3 handles) as one roster
+# row even when Contacts only knows some of her numbers.
+ALIAS_HANDLE_KEY=()      # normalized handle (lowercased email, or last-10 digits)
+ALIAS_HANDLE_GROUPKEY=() # "alias:<slug>" — stable merge key for this group (parallel to ALIAS_HANDLE_KEY)
+ALIAS_GROUP_IDS=()       # one entry per saved group (parallel to the two arrays below)
+ALIAS_GROUP_NAMES=()
+ALIAS_GROUP_SLUGS=()
+
+prefetch_contact_aliases() {
+    ALIAS_HANDLE_KEY=(); ALIAS_HANDLE_GROUPKEY=()
+    ALIAS_GROUP_IDS=(); ALIAS_GROUP_NAMES=(); ALIAS_GROUP_SLUGS=()
+    [[ -z "$PER_CONTACT_ROOT" ]] && return 0
+    local aliases; aliases=$(archive_aliases_file)
+    [[ -f "$aliases" ]] || return 0
+
+    local alias_handles_tmp alias_groups_tmp
+    alias_handles_tmp=$(mktemp "/tmp/imessage_alias_handles_$$.XXXXXX") || return 0
+    alias_groups_tmp=$(mktemp "/tmp/imessage_alias_groups_$$.XXXXXX") || {
+        rm -f "$alias_handles_tmp"
+        return 0
+    }
+
+    # Pass 1: every handle -> its group key. Strictly parallel arrays.
+    python3 - "$aliases" > "$alias_handles_tmp" 2>/dev/null <<'PY' || true
+import json, re, sys
+try:
+    data = json.loads(open(sys.argv[1], encoding="utf-8").read())
+except Exception:
+    data = {}
+for key, person in (data.get("people") or {}).items():
+    name = (person.get("display_name") or "").strip()
+    # Skip corrupted/garbage entries (e.g. captured terminal escape codes
+    # from an old input bug) — a real display name has no control chars.
+    if not name or re.search(r'[\x00-\x1f]', name):
+        continue
+    for h in person.get("handles") or []:
+        h = h.strip()
+        if not h:
+            continue
+        if "@" in h:
+            norms = [h.lower()]
+        else:
+            # Mirror phone_norm_variants() in bash: last-10 and last-9,
+            # with/without a leading trunk 0 stripped. Needed because e.g.
+            # Belgian numbers normalize differently as "+32472817175" vs a
+            # locally-typed "0472817175" under a naive last-10-digits rule
+            # (country code and trunk-prefix lengths don't line up), so a
+            # single fixed key silently misses half of the same person's
+            # messages.
+            digits = re.sub(r"\D", "", h)
+            stripped = digits[1:] if digits.startswith("0") else digits
+            norms = sorted(set(x for x in (digits[-10:], digits[-9:], stripped[-10:], stripped[-9:]) if x))
+        for norm in norms:
+            print(f"{key}\t{norm}")
+PY
+
+    local key norm
+    while IFS=$'\t' read -r key norm; do
+        [[ -z "$key" || -z "$norm" ]] && continue
+        ALIAS_HANDLE_KEY+=("$norm")
+        ALIAS_HANDLE_GROUPKEY+=("alias:$key")
+    done < "$alias_handles_tmp"
+
+    # Pass 2: one row per group -> its display name + pinned folder slug.
+    # Kept in separate, independently-indexed arrays (not reused indices
+    # from pass 1) so a group with N handles doesn't shift this lookup.
+    python3 - "$aliases" > "$alias_groups_tmp" 2>/dev/null <<'PY' || true
+import json, re, sys
+try:
+    data = json.loads(open(sys.argv[1], encoding="utf-8").read())
+except Exception:
+    data = {}
+for key, person in (data.get("people") or {}).items():
+    name = (person.get("display_name") or "").strip()
+    if not name or re.search(r'[\x00-\x1f]', name):
+        continue
+    slug = (person.get("slug") or key).strip()
+    print(f"{key}\t{name}\t{slug}")
+PY
+
+    local gid name slug
+    while IFS=$'\t' read -r gid name slug; do
+        [[ -z "$gid" ]] && continue
+        ALIAS_GROUP_IDS+=("$gid")
+        ALIAS_GROUP_NAMES+=("$name")
+        ALIAS_GROUP_SLUGS+=("$slug")
+    done < "$alias_groups_tmp"
+    rm -f "$alias_handles_tmp" "$alias_groups_tmp"
+}
+
+# Look up the saved group name for a group key (e.g. "alias:laura"), or "".
+alias_group_name() {
+    local gid="${1#alias:}" i
+    for (( i=0; i<${#ALIAS_GROUP_IDS[@]}; i++ )); do
+        if [[ "${ALIAS_GROUP_IDS[$i]}" == "$gid" ]]; then
+            echo "${ALIAS_GROUP_NAMES[$i]}"; return
+        fi
+    done
+    echo ""
+}
+
+# Look up the saved, pinned folder slug for a group key, or "".
+alias_group_slug() {
+    local gid="${1#alias:}" i
+    for (( i=0; i<${#ALIAS_GROUP_IDS[@]}; i++ )); do
+        if [[ "${ALIAS_GROUP_IDS[$i]}" == "$gid" ]]; then
+            echo "${ALIAS_GROUP_SLUGS[$i]}"; return
+        fi
+    done
+    echo ""
+}
+
+# Returns "alias:<slug>" if this handle belongs to a saved group, else "".
+resolve_alias_group_key() {
+    local hid="$1" i norm
+    local -a candidates=()
+    if [[ "$hid" == *"@"* ]]; then
+        candidates=("$(echo "$hid" | tr '[:upper:]' '[:lower:]')")
+    else
+        # Check every plausible normalization (last-10/9, with/without a
+        # leading trunk 0) — a phone number can be logged in more than one
+        # format across the life of a chat.db, and a single fixed-width
+        # slice silently misses the other one (see phone_norm_variants).
+        while IFS= read -r norm; do
+            [[ -n "$norm" ]] && candidates+=("$norm")
+        done < <(phone_norm_variants "$hid")
+    fi
+    [[ ${#candidates[@]} -eq 0 ]] && { echo ""; return; }
+    for norm in "${candidates[@]}"; do
+        for (( i=0; i<${#ALIAS_HANDLE_KEY[@]}; i++ )); do
+            if [[ "${ALIAS_HANDLE_KEY[$i]}" == "$norm" && "${ALIAS_HANDLE_GROUPKEY[$i]}" == alias:* ]]; then
+                echo "${ALIAS_HANDLE_GROUPKEY[$i]}"; return
+            fi
+        done
+    done
+    echo ""
 }
 
 # Fast in-memory lookup against prefetched AddressBook.
@@ -2108,6 +2493,9 @@ build_roster() {
     prefetch_address_book
     info "Loaded ${#AB_PHONE_KEYS[@]} phone(s) and ${#AB_EMAIL_KEYS[@]} email(s) from Contacts."
     log_action "roster: AddressBook ready (${#AB_PHONE_KEYS[@]} phones, ${#AB_EMAIL_KEYS[@]} emails)"
+
+    prefetch_contact_aliases
+    log_action "roster: loaded saved contact groups from contact_aliases.json"
 
     # v2.3.1: hard pre-flight on chat.db. If Full Disk Access isn't granted
     # the cp earlier may have silently produced an unreadable file. Catch
@@ -2168,27 +2556,41 @@ build_roster() {
 
     while IFS=$'\t' read -r rowid hid svc last_epoch nmsgs; do
         [[ -z "$rowid" ]] && continue
-        name=$(resolve_handle_name "$hid")
-        if [[ "$name" == "$hid" ]]; then
-            display="$hid"
-            has_contact=0
-            # No contact match — key by normalized phone if it looks like one,
-            # otherwise key by raw handle (so different emails stay separate).
-            if [[ "$hid" == *"@"* ]]; then
-                key="email:$(echo "$hid" | tr '[:upper:]' '[:lower:]')"
-            else
-                local norm; norm=$(printf '%s' "$hid" | tr -cd '0-9')
-                norm="${norm: -10}"
-                if [[ -n "$norm" ]]; then
-                    key="phone:$norm"
-                else
-                    key="raw:$hid"
-                fi
-            fi
-        else
-            display="$name"
+        # Precedence 1: a saved group in contact_aliases.json (survives even
+        # when Contacts.app doesn't have all of a person's handles linked —
+        # e.g. a UK number, a Belgian number, and an email under one person).
+        local alias_key alias_name
+        alias_key=$(resolve_alias_group_key "$hid")
+        if [[ -n "$alias_key" ]]; then
+            alias_name=$(alias_group_name "$alias_key")
+        fi
+        if [[ -n "$alias_key" && -n "$alias_name" ]]; then
+            display="$alias_name"
             has_contact=1
-            key="name:$(echo "$name" | tr '[:upper:]' '[:lower:]')"
+            key="$alias_key"
+        else
+            name=$(resolve_handle_name "$hid")
+            if [[ "$name" == "$hid" ]]; then
+                display="$hid"
+                has_contact=0
+                # No contact match — key by normalized phone if it looks like one,
+                # otherwise key by raw handle (so different emails stay separate).
+                if [[ "$hid" == *"@"* ]]; then
+                    key="email:$(echo "$hid" | tr '[:upper:]' '[:lower:]')"
+                else
+                    local norm; norm=$(printf '%s' "$hid" | tr -cd '0-9')
+                    norm="${norm: -10}"
+                    if [[ -n "$norm" ]]; then
+                        key="phone:$norm"
+                    else
+                        key="raw:$hid"
+                    fi
+                fi
+            else
+                display="$name"
+                has_contact=1
+                key="name:$(echo "$name" | tr '[:upper:]' '[:lower:]')"
+            fi
         fi
         display=$(echo "$display" | sed 's/[\/:\\*?"<>|]/_/g')
 
@@ -2351,10 +2753,11 @@ scan_previous_exports() {
     PREV_EXPORT_FINISHED=()
     PREV_EXPORT_FORMAT=()
     PREV_EXPORT_LAST_NS=()
+    PREV_EXPORT_SIZE=()
 
     [[ -z "$PER_CONTACT_ROOT" || ! -d "$PER_CONTACT_ROOT" ]] && return 0
 
-    local status_file dir name handles ids status finished format meta last_ns
+    local status_file dir name handles ids status finished format meta last_ns size
     while IFS= read -r status_file; do
         [[ -z "$status_file" ]] && continue
         dir=$(dirname "$status_file")
@@ -2412,6 +2815,8 @@ PY
         [[ -z "$status" ]] && status="unknown"
         [[ -z "$finished" ]] && finished="not recorded"
         [[ -z "$format" ]] && format="single_contact_v1"
+        size=$(du -sh "$dir" 2>/dev/null | awk '{print $1}')
+        [[ -z "$size" ]] && size="?"
 
         PREV_EXPORT_DIRS+=("$dir")
         PREV_EXPORT_NAMES+=("$name")
@@ -2421,6 +2826,7 @@ PY
         PREV_EXPORT_FINISHED+=("$finished")
         PREV_EXPORT_FORMAT+=("$format")
         PREV_EXPORT_LAST_NS+=("$last_ns")
+        PREV_EXPORT_SIZE+=("$size")
     done < <(find "$PER_CONTACT_ROOT" -mindepth 2 -maxdepth 2 -type f -name ".export_status" 2>/dev/null | sort)
 }
 
@@ -2457,7 +2863,20 @@ refresh_previous_exports_prompt() {
     local total_prev=${#PREV_EXPORT_ROWIDS[@]}
     [[ $total_prev -eq 0 ]] && return 0
 
+    # Non-interactive path: --auto-refresh (or AUTO_REFRESH=1 in the
+    # environment) skips the menu entirely and runs the same "recent" update
+    # every archive would get from pressing Enter — for cron/launchd/
+    # "Update Me.command"-style unattended runs.
+    local auto="${AUTO_REFRESH:-false}"
+    if [[ "$auto" == "true" ]]; then
+        info "Auto-refresh: updating $total_prev existing archive(s) in place …"
+    fi
+
     while true; do
+        local choice
+        if [[ "$auto" == "true" ]]; then
+            choice="r"
+        else
         banner
         section "Update archives?"
         echo
@@ -2465,20 +2884,23 @@ refresh_previous_exports_prompt() {
         echo -e "  ${BOLD}$PER_CONTACT_ROOT${RESET}"
         echo
         HR
-        printf "  ${BOLD}%-4s  %-28s  %-31s  %-9s  %-19s${RESET}\n" \
-            "#" "Contact" "Handle(s)" "Format" "Last refreshed"
+        printf "  ${BOLD}%-4s  %-28s  %-31s  %-9s  %-8s  %-19s${RESET}\n" \
+            "#" "Contact" "Handle(s)" "Format" "Size" "Last refreshed"
         HR
 
         local i
         for (( i=0; i<total_prev; i++ )); do
-            printf "  ${BOLD}%-4s${RESET}  %-28s  %-31s  %-9s  %-19s\n" \
+            printf "  ${BOLD}%-4s${RESET}  %-28s  %-31s  %-9s  %-8s  %-19s\n" \
                 "$(( i + 1 ))" \
                 "${PREV_EXPORT_NAMES[$i]:0:28}" \
                 "${PREV_EXPORT_HANDLES[$i]:0:31}" \
                 "${PREV_EXPORT_FORMAT[$i]:0:9}" \
+                "${PREV_EXPORT_SIZE[$i]:-?}" \
                 "${PREV_EXPORT_FINISHED[$i]:0:19}"
         done
         HR
+        local total_size; total_size=$(du -sh "$PER_CONTACT_ROOT" 2>/dev/null | awk '{print $1}')
+        echo -e "  ${DIM}Backup root total on disk: ${total_size:-?}${RESET}"
         echo
         echo -e "  ${BOLD}[Enter]${RESET}/${BOLD}r${RESET} update existing archive folders in place"
         echo -e "  ${BOLD}a${RESET}         full refresh all listed contacts"
@@ -2486,9 +2908,9 @@ refresh_previous_exports_prompt() {
         echo -e "  ${BOLD}s${RESET}         skip and browse normally"
         echo
         printf "  Selection: "
-        local choice
         read -r choice </dev/tty
         choice="${choice:-r}"
+        fi
 
         case "$choice" in
             s|S|0|q|Q)
@@ -2533,7 +2955,7 @@ refresh_previous_exports_prompt() {
                 if ! $any_recent; then
                     warn "No previous export could be refreshed."
                 fi
-                press_any_key
+                [[ "$auto" == "true" ]] || press_any_key
                 return 0
                 ;;
             a|A|all|ALL)
@@ -2623,7 +3045,7 @@ refresh_previous_exports_prompt() {
 do_per_contact_export() {
     # Defensive: never let pipefail bring down the whole script from here.
     set +e
-    section "Browse contacts & export per-person archive"
+    section "Update, export, or merge people"
 
     # v2.2.0: ask where to put the exports (remembered across runs)
     load_config
@@ -2653,6 +3075,11 @@ do_per_contact_export() {
     echo
 
     refresh_previous_exports_prompt
+
+    if [[ "${AUTO_REFRESH:-false}" == "true" ]]; then
+        ok "Auto-refresh complete."
+        return 0
+    fi
 
     local page=0
     local page_size=100
@@ -2711,12 +3138,12 @@ do_per_contact_export() {
         fi
 
         echo
-        echo -e "  Enter a number to export (e.g. ${BCYN}3${RESET}),"
-        echo -e "  multiple numbers (${BCYN}1,4,9${RESET}),"
-        echo -e "  ${BCYN}all${RESET} to export every contact,"
-        echo -e "  ${BCYN}/text${RESET} to search by name/handle/last-message,"
-        echo -e "  ${BCYN}n${RESET}/${BCYN}p${RESET} for next/prev page,"
-        echo -e "  ${BCYN}0${RESET} to go back."
+        echo -e "  ${BCYN}3${RESET}             export one person"
+        echo -e "  ${BCYN}1,4,9${RESET}         export several, with an option to merge them as one person"
+        echo -e "  ${BCYN}all${RESET}           export every contact"
+        echo -e "  ${BCYN}/text${RESET}         search by name, handle, or last-message preview"
+        echo -e "  ${BCYN}n${RESET}/${BCYN}p${RESET}           next/previous page"
+        echo -e "  ${BCYN}0${RESET}             back"
         echo
         printf "  Selection: "
         read -r sel </dev/tty
@@ -2884,9 +3311,39 @@ WHERE handle_id IN ($id_list) OR ROWID IN
     CURRENT_EXPORT_SINCE_NS="$old_since"
 }
 
+archive_numbered_export_conflicts() {
+    # Finder/iCloud may materialize conflict copies beside an atomically
+    # replaced export (for example "chat_laura_bogaert 2.db"). They are never
+    # independent sources. Move them out of the active folder immediately so
+    # downstream tools see exactly one database and one refresh-state file.
+    # The files remain recoverable under _superseded_sources.
+    local outdir="$1" slug="$2"
+    local quarantine="$outdir/_superseded_sources/numbered_conflict_copies"
+    local f base dest stamp
+    stamp=$(date '+%Y%m%d-%H%M%S')
+
+    while IFS= read -r f; do
+        [[ -z "$f" || ! -e "$f" ]] && continue
+        mkdir -p "$quarantine" 2>/dev/null || continue
+        base=$(basename "$f")
+        dest="$quarantine/$base"
+        [[ -e "$dest" ]] && dest="$quarantine/${base%.*}-$stamp.${base##*.}"
+        if mv "$f" "$dest" 2>/dev/null; then
+            warn "Archived numbered Finder/iCloud conflict copy: $base"
+            log_warn "canonical export conflict archived src=$f dest=$dest"
+        fi
+    done < <(find "$outdir" -maxdepth 1 -type f \( \
+        -name "chat_${slug} [0-9]*.db" -o \
+        -name "messages_${slug} [0-9]*.txt" -o \
+        -name ".export_status [0-9]*" -o \
+        -name ".complete [0-9]*" -o \
+        -name "metadata [0-9]*.json" \
+    \) -print 2>/dev/null)
+}
+
 export_selected_contacts() {
     if [[ -z "$PER_CONTACT_ROOT" ]]; then
-        err "Internal error: backup root not set. Re-enter menu [8] and pick a folder."
+        err "Internal error: backup root not set. Re-enter Archive conversations and pick a folder."
         return 1
     fi
     local picks=("$@")
@@ -2948,6 +3405,39 @@ export_selected_contacts() {
 
         local export_format="${ROSTER_EXPORT_FORMAT[$i]:-single_contact_v1}"
         local outdir_override="${ROSTER_EXPORT_DIR_OVERRIDE[$i]:-}"
+
+        # If this handle belongs to a saved group in contact_aliases.json
+        # (checked directly here, not via the roster arrays, so it's correct
+        # regardless of roster sort order), always land in that group's
+        # pinned folder and tag it grouped_contact_v1 — this is what keeps
+        # someone like Laura in one archive instead of spawning a new
+        # per-handle folder every time she's picked from the roster.
+        if [[ -z "$outdir_override" ]]; then
+            local pick_alias_key pick_alias_slug pick_alias_name
+            # $hid may be a single handle OR a merged roster row's
+            # " | "-joined list (e.g. "a@x.com | +1... | +44..."). Check each
+            # piece — resolve_alias_group_key only understands one handle at
+            # a time, so passing the whole joined string through unsplit
+            # would never match (and silently fall back to a plain slug).
+            local hid_part
+            IFS='|' read -r -a hid_parts <<< "$hid"
+            for hid_part in "${hid_parts[@]}"; do
+                hid_part=$(echo "$hid_part" | sed 's/^ *//; s/ *$//')
+                [[ -z "$hid_part" ]] && continue
+                pick_alias_key=$(resolve_alias_group_key "$hid_part")
+                [[ -n "$pick_alias_key" ]] && break
+            done
+            if [[ -n "$pick_alias_key" ]]; then
+                pick_alias_slug=$(alias_group_slug "$pick_alias_key")
+                pick_alias_name=$(alias_group_name "$pick_alias_key")
+                if [[ -n "$pick_alias_slug" ]]; then
+                    outdir_override="$PER_CONTACT_ROOT/$pick_alias_slug"
+                    export_format="grouped_contact_v1"
+                    [[ -n "$pick_alias_name" ]] && name="$pick_alias_name"
+                fi
+            fi
+        fi
+
         local outdir="$PER_CONTACT_ROOT/$slug"
         if [[ -n "$outdir_override" ]]; then
             outdir="$outdir_override"
@@ -3034,6 +3524,7 @@ SQL
             continue
         fi
         mv -f "$out_db_tmp" "$out_db"
+        archive_numbered_export_conflicts "$outdir" "$slug"
         rm -f "$sql_err"
         ok "Wrote $(human_bytes $(stat -f%z "$out_db" 2>/dev/null || stat -c%s "$out_db"))  →  $out_db"
 
@@ -3201,92 +3692,216 @@ EOF
 # ── Cleanup temp files ────────────────────────────────────────────────────────
 cleanup_temp() {
     rm -f "$DB_TMP" "$ADDRESSBOOK_TMP" "$CONTACT_CACHE_FILE" "/tmp/imessage_seen_$$.txt" 2>/dev/null || true
+    if [[ ${#ADDRESSBOOK_TMP_LIST[@]} -gt 0 ]]; then
+        rm -f "${ADDRESSBOOK_TMP_LIST[@]}" 2>/dev/null || true
+    fi
 }
 
 trap cleanup_temp EXIT INT TERM
 
 # ── Main menu ─────────────────────────────────────────────────────────────────
-main_menu() {
+show_status_header() {
+    echo -e "  ${DIM}User home      : $REAL_HOME${RESET}"
+    echo -e "  ${DIM}Backup root    : ${BACKUP_ROOT:-$DEFAULT_BACKUP_ROOT}${RESET}"
+    echo -e "  ${DIM}Desktop export : $OUTPUT_ROOT${RESET}"
+    echo -e "  ${DIM}Log            : $LOG_FILE${RESET}"
+    $DRY_RUN && echo -e "  ${BYLW}★ DRY-RUN MODE ACTIVE – nothing will be written${RESET}"
+    $DELETE_AFTER_COPY && echo -e "  ${BRED}★ DELETE AFTER COPY IS ENABLED${RESET}"
+    $DEBUG_LOG && echo -e "  ${BCYN}★ DEBUG LOGGING ON – verbose trace active${RESET}"
+    echo
+
+    local _att_sz=0
+    [[ -d "$ATTACHMENTS_DIR" ]] && _att_sz=$(du -sk "$ATTACHMENTS_DIR" 2>/dev/null | awk '{print $1*1024}' || echo 0)
+    local _out_sz=0
+    [[ -d "$OUTPUT_ROOT" ]] && _out_sz=$(du -sk "$OUTPUT_ROOT" 2>/dev/null | awk '{print $1*1024}' || echo 0)
+    local _manifest_n=0
+    [[ -f "$MANIFEST_FILE" ]] && _manifest_n=$(wc -l < "$MANIFEST_FILE" | tr -d ' ')
+    echo -e "  ${DIM}Messages attachments : $(human_bytes $_att_sz)${RESET}"
+    echo -e "  ${DIM}Desktop export size  : $(human_bytes $_out_sz)  ($_manifest_n files exported)${RESET}"
+    echo
+}
+
+run_sender_extraction() {
+    banner
+    mkdir -p "$OUTPUT_ROOT"
+    log_info "======== Session start ========"
+    log_info "User=$REAL_USER  dry_run=$DRY_RUN  delete=$DELETE_AFTER_COPY"
+    do_extraction
+    show_summary_so_far
+    press_any_key
+}
+
+run_per_contact_export_safe() {
+    set +e
+    do_per_contact_export
+    local _rc=$?
+    set -e
+    if [[ $_rc -ne 0 ]]; then
+        warn "Per-contact export returned exit code $_rc — returning to menu."
+        press_any_key
+    fi
+}
+
+update_last_run() {
+    set +e
+    banner
+    section "Update last run"
+
+    load_config
+    PER_CONTACT_ROOT="$BACKUP_ROOT"
+    if [[ -z "$PER_CONTACT_ROOT" ]]; then
+        PER_CONTACT_ROOT="$DEFAULT_BACKUP_ROOT"
+    fi
+    ensure_archive_state
+
+    echo
+    info "Using saved archive folder: ${BCYN}$PER_CONTACT_ROOT${RESET}"
+    scan_previous_exports
+    local total_prev=${#PREV_EXPORT_ROWIDS[@]}
+    if [[ $total_prev -eq 0 ]]; then
+        warn "No previous per-contact archive exports found in that folder."
+        info "Use Archive conversations → Browse, export, or merge people first."
+        press_any_key
+        set -e
+        return 0
+    fi
+    info "Found ${BOLD}$total_prev${RESET} previous archive(s). Refreshing them in place."
+    echo
+
+    if ! build_roster; then
+        warn "Could not build roster — see $LOG_FILE for details."
+        press_any_key
+        set -e
+        return 0
+    fi
+
+    local old_auto="${AUTO_REFRESH:-}"
+    AUTO_REFRESH=true
+    refresh_previous_exports_prompt
+    AUTO_REFRESH="$old_auto"
+
+    press_any_key
+    set -e
+}
+
+show_log_file() {
+    if [[ -f "$LOG_FILE" ]]; then
+        less +G "$LOG_FILE" </dev/tty || tail -100 "$LOG_FILE"
+    else
+        warn "No log file yet."
+        press_any_key
+    fi
+}
+
+show_archive_menu() {
     while true; do
         banner
-        echo -e "  ${DIM}User home : $REAL_HOME${RESET}"
-        echo -e "  ${DIM}Output    : $OUTPUT_ROOT${RESET}"
-        echo -e "  ${DIM}Log       : $LOG_FILE${RESET}"
-        $DRY_RUN && echo -e "  ${BYLW}★ DRY-RUN MODE ACTIVE – nothing will be written${RESET}"
-        $DELETE_AFTER_COPY && echo -e "  ${BRED}★ DELETE AFTER COPY IS ENABLED${RESET}"
-        $DEBUG_LOG && echo -e "  ${BCYN}★ DEBUG LOGGING ON – verbose trace active${RESET}"
+        section "Archive conversations"
         echo
-
-        # Live storage snapshot in header
-        local _att_sz=0
-        [[ -d "$ATTACHMENTS_DIR" ]] && _att_sz=$(du -sk "$ATTACHMENTS_DIR" 2>/dev/null | awk '{print $1*1024}' || echo 0)
-        local _out_sz=0
-        [[ -d "$OUTPUT_ROOT" ]] && _out_sz=$(du -sk "$OUTPUT_ROOT" 2>/dev/null | awk '{print $1*1024}' || echo 0)
-        local _manifest_n=0
-        [[ -f "$MANIFEST_FILE" ]] && _manifest_n=$(wc -l < "$MANIFEST_FILE" | tr -d ' ')
-        echo -e "  ${DIM}iMessage Attachments folder : $(human_bytes $_att_sz)${RESET}"
-        echo -e "  ${DIM}Desktop export folder       : $(human_bytes $_out_sz)  ($_manifest_n files exported)${RESET}"
+        echo -e "  ${DIM}Use this for browsable, per-person archives. Select multiple handles${RESET}"
+        echo -e "  ${DIM}inside option [2] to merge them into one saved person.${RESET}"
         echo
+        echo -e "  ${BBLU}[1]${RESET}  Update last run using saved folder"
+        echo -e "  ${BBLU}[2]${RESET}  Browse, export, or merge people"
+        echo -e "  ${BBLU}[3]${RESET}  Open archive backup folder"
+        echo -e "  ${BBLU}[4]${RESET}  Change archive backup folder"
+        echo -e "  ${BBLU}[5]${RESET}  Legacy sender dump to Desktop"
+        echo -e "  ${BBLU}[0]${RESET}  Back"
+        echo
+        printf "  Select option: "
+        local choice
+        read -r choice </dev/tty
+        case "$choice" in
+            1) update_last_run ;;
+            2) run_per_contact_export_safe ;;
+            3)
+                load_config
+                open "$BACKUP_ROOT" 2>/dev/null || info "Could not open Finder (are you on a headless session?)"
+                ;;
+            4)
+                load_config
+                pick_backup_dir || true
+                ;;
+            5) run_sender_extraction ;;
+            0|q|Q) return ;;
+            *) warn "Invalid option"; sleep 1 ;;
+        esac
+    done
+}
 
-        echo -e "  ${BBLU}[1]${RESET}  Run extraction       ${DIM}(copy attachments → Desktop folder)${RESET}"
-        echo -e "  ${BBLU}[2]${RESET}  Show statistics      ${DIM}(message counts, top senders, storage)${RESET}"
-        echo -e "  ${BBLU}[3]${RESET}  Options              ${DIM}(filters, dry-run, delete mode, output path)${RESET}"
-        echo -e "  ${BBLU}[4]${RESET}  Open output folder in Finder"
-        echo -e "  ${BBLU}[5]${RESET}  View log file"
-        echo -e "  ${BBLU}[6]${RESET}  ${BMAG}iCloud Cleanup & Verify${RESET}  ${DIM}(delete local + clear iCloud quota)${RESET}"
-        echo -e "  ${BBLU}[7]${RESET}  ${BOLD}Check iCloud Status${RESET}        ${DIM}(verify, wait timer, open UI, retry)${RESET}"
-        echo -e "  ${BBLU}[8]${RESET}  ${BOLD}Browse contacts & export per-person archive${RESET}  ${DIM}(v2.7.1 — history + in-place refresh)${RESET}"
+show_icloud_menu() {
+    while true; do
+        banner
+        section "iCloud cleanup"
+        echo
+        echo -e "  ${DIM}Cleanup deletes local copied Messages attachments and asks iCloud${RESET}"
+        echo -e "  ${DIM}to reclaim storage. Export anything important before using it.${RESET}"
+        echo
+        echo -e "  ${BBLU}[1]${RESET}  Run iCloud cleanup and verification"
+        echo -e "  ${BBLU}[2]${RESET}  Check cleanup status / wait / retry"
+        echo -e "  ${BBLU}[3]${RESET}  Open Desktop extraction folder"
+        echo -e "  ${BBLU}[0]${RESET}  Back"
+        echo
+        printf "  Select option: "
+        local choice
+        read -r choice </dev/tty
+        case "$choice" in
+            1) do_icloud_cleanup ;;
+            2) do_icloud_verify ;;
+            3) open "$OUTPUT_ROOT" 2>/dev/null || info "Could not open Finder (are you on a headless session?)" ;;
+            0|q|Q) return ;;
+            *) warn "Invalid option"; sleep 1 ;;
+        esac
+    done
+}
+
+show_tools_menu() {
+    while true; do
+        banner
+        section "Tools and diagnostics"
+        echo
+        echo -e "  ${BBLU}[1]${RESET}  Show statistics"
+        echo -e "  ${BBLU}[2]${RESET}  View log file"
+        echo -e "  ${BBLU}[3]${RESET}  Open Desktop extraction folder"
+        echo -e "  ${BBLU}[4]${RESET}  Just clone the messages.db and save it   ${DIM}(queryable copy in output folder)${RESET}"
+        echo -e "  ${BBLU}[0]${RESET}  Back"
+        echo
+        printf "  Select option: "
+        local choice
+        read -r choice </dev/tty
+        case "$choice" in
+            1) show_stats_screen ;;
+            2) show_log_file ;;
+            3) open "$OUTPUT_ROOT" 2>/dev/null || info "Could not open Finder (are you on a headless session?)" ;;
+            4) clone_messages_db ;;
+            0|q|Q) return ;;
+            *) warn "Invalid option"; sleep 1 ;;
+        esac
+    done
+}
+
+main_menu() {
+    while true; do
+        load_config
+        banner
+        show_status_header
+        echo -e "  ${BBLU}[1]${RESET}  ${BOLD}Update last run${RESET}             ${DIM}(refresh saved archive folder, no reselecting)${RESET}"
+        echo -e "  ${BBLU}[2]${RESET}  Archive conversations      ${DIM}(browse, export, merge people, folders)${RESET}"
+        echo -e "  ${BBLU}[3]${RESET}  ${BMAG}iCloud cleanup${RESET}             ${DIM}(delete local copies, verify storage)${RESET}"
+        echo -e "  ${BBLU}[4]${RESET}  Settings                    ${DIM}(filters, dry-run, delete mode, folders)${RESET}"
+        echo -e "  ${BBLU}[5]${RESET}  Tools and diagnostics        ${DIM}(stats, logs, open folders)${RESET}"
         echo -e "  ${BBLU}[q]${RESET}  Quit"
         echo
         printf "  Select option: "
+        local choice
         read -r choice </dev/tty
 
         case "$choice" in
-            1)
-                banner
-                mkdir -p "$OUTPUT_ROOT"
-                log_info "======== Session start ========"
-                log_info "User=$REAL_USER  dry_run=$DRY_RUN  delete=$DELETE_AFTER_COPY"
-                do_extraction
-                show_summary_so_far
-                press_any_key
-                ;;
-            2)
-                show_stats_screen
-                ;;
-            3)
-                show_options_menu
-                ;;
-            4)
-                open "$OUTPUT_ROOT" 2>/dev/null || info "Could not open Finder (are you on a headless session?)"
-                ;;
-            5)
-                if [[ -f "$LOG_FILE" ]]; then
-                    less +G "$LOG_FILE" </dev/tty || tail -100 "$LOG_FILE"
-                else
-                    warn "No log file yet."
-                    press_any_key
-                fi
-                ;;
-            6)
-                do_icloud_cleanup
-                ;;
-            7)
-                do_icloud_verify
-                ;;
-            8)
-                # v2.2.2: locally disable -e for this call so any non-zero
-                # pipe inside the per-contact flow can't kill the whole script.
-                # The function still reports its own errors via warn/err.
-                set +e
-                do_per_contact_export
-                local _rc=$?
-                set -e
-                if [[ $_rc -ne 0 ]]; then
-                    warn "Per-contact export returned exit code $_rc — returning to menu."
-                    press_any_key
-                fi
-                ;;
+            1) update_last_run ;;
+            2) show_archive_menu ;;
+            3) show_icloud_menu ;;
+            4) show_options_menu ;;
+            5) show_tools_menu ;;
             q|Q)
                 echo
                 info "Goodbye. Log saved to: $LOG_FILE"
@@ -3294,7 +3909,7 @@ main_menu() {
                 exit 0
                 ;;
             *)
-                warn "Invalid option – press 1-8 or q"
+                warn "Invalid option – press 1-5 or q"
                 sleep 1
                 ;;
         esac
@@ -3302,30 +3917,47 @@ main_menu() {
 }
 
 # ── Entry point ───────────────────────────────────────────────────────────────
+AUTO_REFRESH=false
 main() {
     # Parse flags
     for arg in "$@"; do
         case "$arg" in
             --debug|-d) DEBUG_LOG=true ;;
+            # Non-interactive: skip all menus and just update existing
+            # per-contact archives in place (the "recent" refresh every
+            # archive would get from pressing Enter). For "Update Me.command",
+            # launchd/cron, or anywhere you don't want to sit through prompts.
+            --auto-refresh) AUTO_REFRESH=true ;;
         esac
     done
+
+    ensure_root_or_reexec "$@"
 
     # Ensure output dir exists for logging early
     mkdir -p "$OUTPUT_ROOT" 2>/dev/null || true
     load_config
     sync_archive_repo_run_logs
 
-    banner
+    if [[ "$AUTO_REFRESH" == "true" ]]; then
+        info "Auto-refresh mode — no menus, updating known archives only."
+    else
+        banner
+    fi
     section "Startup checks"
 
-    check_root
     check_dependencies
     check_full_disk_access
     check_messages_closed
     copy_databases
 
     ok "All checks passed"
-    press_any_key
+
+    if [[ "$AUTO_REFRESH" == "true" ]]; then
+        PER_CONTACT_ROOT="$BACKUP_ROOT"
+        do_per_contact_export
+        info "Log saved to: $LOG_FILE"
+        exit 0
+    fi
 
     main_menu
 }

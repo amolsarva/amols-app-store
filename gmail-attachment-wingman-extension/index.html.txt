@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 32px; max-width: 760px; color: #111; }
+      h1 { font-size: 28px; margin-bottom: 8px; }
+      .note { color: #555; line-height: 1.45; margin-bottom: 24px; }
+      label { display: block; font-weight: 700; margin-top: 18px; margin-bottom: 6px; }
+      input, textarea { width: 100%; box-sizing: border-box; font-size: 15px; padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; }
+      textarea { min-height: 92px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+      button { margin-top: 20px; padding: 12px 18px; font-size: 15px; font-weight: 700; border: 0; border-radius: 10px; cursor: pointer; background: #111; color: white; }
+      button:disabled { opacity: 0.45; cursor: not-allowed; }
+      .examples { background: #f6f6f6; border-radius: 10px; padding: 14px 16px; margin-top: 18px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.5; }
+      .result, .error { margin-top: 24px; padding: 16px; border-radius: 10px; line-height: 1.5; }
+      .result { background: #eef9f0; border: 1px solid #b7e3c0; }
+      .error { background: #fff0f0; border: 1px solid #efb3b3; }
+      a { color: #0b57d0; }
+    </style>
+  </head>
+  <body>
+    <h1>Gmail Attachment Extractor</h1>
+    <div class="note">
+      Enter a Gmail search query. The script will copy matching attachments to Drive,
+      label the original emails, and send bundle emails to you with the files attached.
+      It cannot actually remove attachments from old Gmail messages.
+    </div>
+    <form id="form">
+      <label for="query">Gmail search query</label>
+      <textarea id="query" name="query" placeholder='Example: from:someone@example.com has:attachment newer_than:30d'></textarea>
+      <label for="recipient">Send bundle emails to</label>
+      <input id="recipient" name="recipient" type="email" placeholder="your@email.com">
+      <button id="runButton" type="submit">Extract attachments</button>
+    </form>
+    <div class="examples">
+      Useful examples:<br>
+      has:attachment newer_than:7d<br>
+      from:lawyer@example.com has:attachment<br>
+      subject:NSCC has:attachment<br>
+      filename:pdf NSCC<br>
+      newer_than:30d (invoice OR receipt) has:attachment
+    </div>
+    <div id="status"></div>
+    <script>
+      const form = document.getElementById('form');
+      const status = document.getElementById('status');
+      const runButton = document.getElementById('runButton');
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const query = document.getElementById('query').value.trim();
+        const recipient = document.getElementById('recipient').value.trim();
+        if (!query) {
+          status.innerHTML = '<div class="error">Please enter a Gmail search query.</div>';
+          return;
+        }
+        runButton.disabled = true;
+        runButton.textContent = 'Working...';
+        status.innerHTML = '<div class="result">Scanning Gmail and extracting attachments. Keep this tab open.</div>';
+        google.script.run
+          .withSuccessHandler(function(result) {
+            runButton.disabled = false;
+            runButton.textContent = 'Extract attachments';
+            status.innerHTML = `
+              <div class="result">
+                <strong>Done.</strong><br><br>
+                Search query: <code>${escapeHtml(result.query)}</code><br>
+                Sent bundle emails to: ${escapeHtml(result.recipient)}<br>
+                Label applied: ${escapeHtml(result.label)}<br><br>
+                Matching threads: ${result.totalThreads}<br>
+                Messages scanned: ${result.totalMessages}<br>
+                Attachments found: ${result.totalAttachments}<br>
+                Saved to Drive: ${result.totalSavedToDrive}<br>
+                Attached to sent emails: ${result.totalAttachedToEmails}<br>
+                Bundle emails sent: ${result.emailBundleCount}<br><br>
+                <a href="${result.folderUrl}" target="_blank">Open Drive folder</a><br>
+                <a href="${result.manifestUrl}" target="_blank">Open manifest CSV</a>
+              </div>`;
+          })
+          .withFailureHandler(function(error) {
+            runButton.disabled = false;
+            runButton.textContent = 'Extract attachments';
+            status.innerHTML = `<div class="error"><strong>Error:</strong><br>${escapeHtml(error.message || String(error))}</div>`;
+          })
+          .runAttachmentExtractor({ query, recipient });
+      });
+      function escapeHtml(value) {
+        return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+      }
+    </script>
+  </body>
+</html>

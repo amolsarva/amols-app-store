@@ -27,10 +27,12 @@ header() {
     divider
 }
 
-# Seeds derived from your screenshot
+# Seeds resolved dynamically to whichever Mac/user this runs under
 SEED_FOLDERS=(
-    "/Users/amol/Library"
-    "/Users/amol/Desktop"
+    "$HOME/Library"
+    "$HOME/Desktop"
+    "$HOME/Documents"
+    "$HOME/Downloads"
 )
 
 # Function to find large folders
@@ -49,7 +51,8 @@ find_large_folders() {
 
     echo ""
     header "📁 Preparing folder list"
-    awk '{print $2}' /tmp/bigfolders.txt | sort -u > /tmp/scanlist.txt
+    # cut (not awk) so folder names containing spaces stay intact
+    grep -E '^[0-9.]+[KMGT]?\s' /tmp/bigfolders.txt | cut -f2- | sort -u > /tmp/scanlist.txt
 
     echo -e "${GREEN}Found $(wc -l < /tmp/scanlist.txt) candidate heavy folders.${RESET}"
 }

@@ -8,7 +8,7 @@
   </head>
   <body>
     <main>
-      <h1>Voice Exporter</h1>
+      <h1>Voice Exporter <span id="ver" style="font-size:11px;font-weight:400;color:#6b7280"></span></h1>
 
       <label for="format">Format</label>
       <select id="format">
@@ -25,12 +25,22 @@
         Only export messages newer than last run
       </label>
 
+      <p id="folder-info" class="hint">📁 <span id="folder-name">No folder set — will prompt on first export</span> <a href="#" id="change-folder" style="margin-left:4px">change</a></p>
+
+      <div id="archive-box" class="hint" style="display:none;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;color:#374151;line-height:1.45">
+        <span id="archive-text"></span>
+      </div>
+
       <button id="export">Export open thread</button>
+      <button id="get-newer" class="secondary" style="display:none">⬇ Get newer messages</button>
+      <button id="get-earlier" class="secondary" style="display:none">⬆ Get earlier history</button>
+      <button id="resync" class="secondary">🔄 Re-sync images (fetch any missing)</button>
       <button id="resume" class="secondary" style="display:none">Resume from checkpoint</button>
       <button id="stop" class="secondary">Stop scrolling</button>
 
       <p id="checkpoint-info" class="hint" style="display:none"></p>
       <p id="status">Open a Google Voice conversation, then export.</p>
+      <p style="margin:0"><a href="#" id="reload-ext" style="font-size:11px;color:#6b7280;text-decoration:none">↻ Reload extension after code changes</a></p>
     </main>
     <script src="popup.js"></script>
   </body>

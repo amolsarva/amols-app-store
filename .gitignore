@@ -7,3 +7,16 @@ __pycache__/
 *.log
 /personalcontacts-analyzer/data/
 /drive-dedup/scan_results/
+
+# Big local-only tool trees (GB-scale: venvs, media, model output) — keep on disk, not in git
+opensore/
+opensnore/
+repo2audiobook/
+supporting-files/
+codex-openclaw-simulator/
+# nested repos with their own remotes
+screenshot-mover/
+imessage-cleanup/
+# local build artifacts
+backstage/dist/
+.git-BROKEN-2026-09-17/
