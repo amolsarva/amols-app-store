@@ -19,6 +19,16 @@ GO=0; [[ "${1:-}" == "--go" ]] && GO=1
 cd "$REPO"
 
 step() { echo; echo "── $*"; }
+# Push over SSH; if this Mac has no GitHub SSH key, retry over HTTPS (uses the Keychain login).
+push() {
+  local dir="$1" branch https
+  branch="$(git -C "$dir" branch --show-current)"
+  git -C "$dir" push -q origin HEAD 2>/dev/null && return 0
+  https="$(git -C "$dir" remote get-url origin | sed -E 's#^git@github.com:#https://github.com/#')"
+  echo "  (SSH push failed; retrying over HTTPS: $https)"
+  git -C "$dir" push -q "$https" "HEAD:$branch" || return 1
+  git -C "$dir" fetch -q "$https" "+refs/heads/$branch:refs/remotes/origin/$branch" || true  # keep "ahead/behind" accurate
+}
 die() { echo "✗ $*"; exit 1; }
 
 step "1. Rebuild README, store page, launcher catalog, announcement drafts"
@@ -62,12 +72,12 @@ git add -A
 if ! git diff --cached --quiet; then
   git commit -q -m "Publish App Store catalog ($(date +%F))" || die "commit failed (the global pre-commit secret hook may have blocked it; read its message)"
 fi
-git push -q origin HEAD || die "push failed"
+push "$REPO" || die "push failed"
 echo "  ✓ pushed $(git rev-parse --short HEAD)"
 
 step "6. Update amolsarva.com"
 [[ -d "$SITE/.git" ]] || die "website repo not found at $SITE"
-git -C "$SITE" pull -q --rebase --autostash origin "$(git -C "$SITE" branch --show-current)" \
+git -C "$SITE" pull -q --rebase --autostash "$(git -C "$SITE" remote get-url origin | sed -E 's#^git@github.com:#https://github.com/#')" "$(git -C "$SITE" branch --show-current)" \
   || die "could not bring the website repo up to date (resolve in $SITE, then re-run)"
 cp supporting-files/scripts.html "$SITE/scripts.html"
 cat > "$SITE/amols-scripts.html" <<'HTML'
@@ -79,8 +89,9 @@ HTML
   cd "$SITE" || exit 1
   git add scripts.html amols-scripts.html
   git diff --cached --quiet || git commit -q -m "Update App Store page from amols-app-store ($(date +%F))" || exit 1
-  git push -q origin HEAD
+  true
 ) || die "website push failed (check: git -C \"$SITE\" fsck)"
+push "$SITE" || die "website push failed"
 echo "  ✓ website pushed"
 
 step "7. Wait for the live page"
