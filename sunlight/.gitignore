@@ -1,0 +1,5 @@
+.build/
+dist/
+recovery/
+*.dmp
+__pycache__/

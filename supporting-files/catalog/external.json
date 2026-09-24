@@ -1,0 +1,165 @@
+[
+  {
+    "id": "dadsbot",
+    "name": "DadsBot",
+    "slug": "dadsbot",
+    "icon": "🎙️",
+    "category": "ai",
+    "tags": [
+      "ai",
+      "oral-history",
+      "family",
+      "nextjs",
+      "public-app"
+    ],
+    "color": "linear-gradient(135deg, #f0c45b, #ff6fae)",
+    "summary": "A warm biographer-style interview app for capturing long-form oral histories with recording, transcription, memory primers, and session summaries.",
+    "story": "DadsBot is the family-recording project: one-button capture, automatic speech-to-text, assistant follow-ups, and a memory layer so the next conversation knows what came before.",
+    "path": "https://dadsbot.vercel.app",
+    "repoUrl": "https://github.com/amolsarva/dadsbot",
+    "liveUrl": "https://dadsbot.vercel.app",
+    "getLabel": "Try",
+    "featured": true,
+    "section": "Web apps",
+    "status": "public",
+    "kind": "web-app",
+    "added": "2026-05-01"
+  },
+  {
+    "id": "opensore",
+    "name": "OpenSore",
+    "slug": "opensore",
+    "icon": "🕵️",
+    "category": "evidence",
+    "tags": [
+      "ai",
+      "legal",
+      "hr",
+      "evidence",
+      "python"
+    ],
+    "color": "linear-gradient(135deg, #62a8ff, #7c3aed)",
+    "summary": "AI-assisted workplace evidence investigation for lawyers, HR, boards, and compliance teams.",
+    "story": "OpenSore turns scattered emails, chats, documents, calendars, notes, and exports into source-backed timelines, contradiction checks, and structured investigation work product.",
+    "path": "https://github.com/amolsarva/opensore",
+    "repoUrl": "https://github.com/amolsarva/opensore",
+    "getLabel": "Repo",
+    "featured": true,
+    "section": "Web apps",
+    "status": "public",
+    "kind": "web-app",
+    "added": "2026-05-01"
+  },
+  {
+    "id": "opensnore",
+    "name": "OpenSnoRE",
+    "slug": "OpenSNORE",
+    "icon": "💤",
+    "category": "web",
+    "tags": [
+      "web-app",
+      "pwa",
+      "audio",
+      "wellness",
+      "joke"
+    ],
+    "color": "linear-gradient(135deg, #44d17d, #55d6c2)",
+    "summary": "A browser app, PWA, and Mac-app experiment with fake snores for boring moments and guided exercises for quieter nights.",
+    "story": "OpenSnoRE started as a ridiculous snore button and grew into a playful sleep-audio lab: procedural snores, boring-situation theater, share loops, and a real stop-snoring side quest.",
+    "path": "https://amolsarva.github.io/OpenSNORE/",
+    "repoUrl": "https://github.com/amolsarva/OpenSNORE",
+    "liveUrl": "https://amolsarva.github.io/OpenSNORE/",
+    "getLabel": "Try",
+    "featured": true,
+    "section": "Web apps",
+    "status": "public",
+    "kind": "web-app",
+    "added": "2026-05-01"
+  },
+  {
+    "name": "iMessage Cleanup",
+    "icon": "💬",
+    "section": "Messages: archive & backup",
+    "kind": "external-repo",
+    "status": "public",
+    "featured": false,
+    "category": "storage",
+    "tags": [
+      "mac-tool",
+      "storage",
+      "icloud",
+      "sqlite",
+      "contacts"
+    ],
+    "color": "linear-gradient(135deg, #1f6feb, #7c3aed)",
+    "summary": "Interactive exporter and iCloud storage cleaner: exports per-person archives (database, transcript, media) and frees space by removing local attachment copies.",
+    "story": "Old conversations are decisions, context, favors, family and receipts. Export the people who matter into durable per-person archives, then reclaim the gigabytes Messages hoards. For the nightly all-conversations archive, pair it with iMessage Sync.",
+    "launcher": {
+      "entry": "imessage_cleanup.sh",
+      "short": "Export per-person archives & free iCloud space",
+      "long": "Interactive exporter and iCloud storage cleaner: exports per-person archives (database, transcript, media) and frees space by removing local attachment copies."
+    },
+    "store_path": "imessage-cleanup/run.sh",
+    "added": "2026-05-01",
+    "folder": "imessage-cleanup",
+    "repoUrl": "https://github.com/amolsarva/imessage-cleanup"
+  },
+  {
+    "name": "repo2audiobook",
+    "icon": "🎧",
+    "section": "Creative experiments",
+    "kind": "local-only",
+    "status": "private",
+    "featured": false,
+    "category": "mac-tool",
+    "tags": [
+      "mac-tool"
+    ],
+    "color": "linear-gradient(135deg, #334155, #64748b)",
+    "summary": "Converts a GitHub repository into a narrated audiobook/podcast using OpenAI TTS, with modes like investor diligence, technical deep-dive, and beginner. Run setup once to install dependencies, then run repo2audiobook.py with a repo URL.",
+    "story": "",
+    "launcher": {
+      "entry": "setup.sh",
+      "short": "Turn a GitHub repo into a narrated audiobook",
+      "long": "Converts a GitHub repository into a narrated audiobook/podcast using OpenAI TTS, with modes like investor diligence, technical deep-dive, and beginner. Run setup once to install dependencies, then run repo2audiobook.py with a repo URL."
+    },
+    "store_path": "repo2audiobook/",
+    "added": "2026-05-01",
+    "folder": "repo2audiobook",
+    "review_note": "Mac-only (232 MB incl. output); give it its own repo to publish"
+  },
+  {
+    "name": "screenshot-mover",
+    "icon": "🧰",
+    "section": "Storage & cleanup",
+    "kind": "local-only",
+    "status": "review",
+    "featured": false,
+    "category": "mac-tool",
+    "tags": [
+      "mac-tool"
+    ],
+    "color": "linear-gradient(135deg, #334155, #64748b)",
+    "summary": "",
+    "story": "",
+    "launcher": {
+      "entry": "run.sh",
+      "short": "",
+      "long": ""
+    },
+    "store_path": "screenshot-mover/",
+    "added": "2026-05-01",
+    "folder": "screenshot-mover",
+    "review_note": "approved to publish as its own repo: create an empty github.com/amolsarva/screenshot-mover, repair its history (see git-privacy notes), push, then set repoUrl and status public"
+  },
+  {
+    "folder": "codex-openclaw-simulator",
+    "name": "codex-openclaw-simulator",
+    "icon": "🌉",
+    "status": "private",
+    "section": "Other",
+    "summary": "Duplicate of ~/Documents/root/message-bridge (identical src/). Kept on disk, never published.",
+    "added": "2026-05-01",
+    "kind": "local-only"
+  }
+]

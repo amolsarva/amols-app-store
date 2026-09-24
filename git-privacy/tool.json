@@ -1,0 +1,25 @@
+{
+  "name": "git-privacy",
+  "icon": "🔏",
+  "section": "Keeping the machine healthy",
+  "kind": "mac-script",
+  "status": "public",
+  "featured": false,
+  "category": "mac-tool",
+  "tags": [
+    "mac-tool",
+    "git",
+    "privacy",
+    "icloud"
+  ],
+  "color": "linear-gradient(135deg, #1e293b, #22c55e)",
+  "summary": "Keep code on GitHub and personal notes on your Macs: anything git ignores stays in your iCloud-synced folders and is blocked from ever being pushed.",
+  "story": "If your repos live in iCloud Drive, private notes, contact lists and AI instructions sit right next to public code. git-privacy makes one rule enforceable on every Mac: ignored means private. A pre-push guard blocks leaks, scrub removes private files from not-yet-pushed commits, and audit finds corrupted repositories before they bite.",
+  "launcher": {
+    "entry": "run.sh",
+    "short": "Keep private files off GitHub",
+    "long": "audit: every repo's private files, unpushed leaks and corruption · install: guard this Mac · scrub <repo> --apply: remove private files from unpushed commits."
+  },
+  "store_path": "git-privacy/",
+  "added": "2026-09-24"
+}

@@ -1,0 +1,25 @@
+{
+  "name": "Screenshot Tidy",
+  "icon": "📸",
+  "section": "Storage & cleanup",
+  "kind": "mac-script",
+  "status": "public",
+  "featured": false,
+  "category": "productivity",
+  "tags": [
+    "mac-tool",
+    "desktop",
+    "launchagent",
+    "screenshots"
+  ],
+  "color": "linear-gradient(135deg, #62a8ff, #55d6c2)",
+  "summary": "Moves screenshots off the Desktop into a real Screenshots folder and keeps the habit alive.",
+  "story": "Screenshots are field notes from the day: a chart, a bug, a building, a founder deck. They should be findable, not sprinkled across the Desktop like confetti.",
+  "launcher": {
+    "entry": "screenshot-tidy-install.sh",
+    "short": "Auto-organize screenshots",
+    "long": "Installs a background watcher that moves new Desktop screenshots into dated folders automatically, so they never pile up on your Desktop."
+  },
+  "store_path": "screenshot-tidy/",
+  "added": "2026-05-01"
+}

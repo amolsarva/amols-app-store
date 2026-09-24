@@ -1,0 +1,26 @@
+{
+  "name": "VOICEMEMOCLEANER",
+  "icon": "🎙️",
+  "section": "Storage & cleanup",
+  "kind": "mac-script",
+  "status": "public",
+  "featured": false,
+  "category": "storage",
+  "tags": [
+    "mac-tool",
+    "audio",
+    "export",
+    "sqlite",
+    "metadata"
+  ],
+  "color": "linear-gradient(135deg, #7c3aed, #b99cff)",
+  "summary": "Exports every Voice Memo — original and compressed copies — with title, date, duration, and GPS metadata for analysis and archival.",
+  "story": "Voice Memos pile up and iCloud never makes them easy to actually use. This reads the Voice Memos database directly, drops full-quality and space-saving copies of every recording into one folder, and pulls out whatever GPS/time metadata is embedded so the pile becomes something you can sort, search, and listen back through.",
+  "launcher": {
+    "entry": "VOICEMEMOCLEANER.sh",
+    "short": "Export & compress Voice Memos",
+    "long": "Exports every Voice Memo — full-quality original plus a smaller compressed copy — into one folder, along with title, date, duration, and GPS location metadata where available. Read-only against Voice Memos itself; nothing in the app is touched. Reruns are incremental, so refreshing after new recordings is fast."
+  },
+  "store_path": "voicememocleaner/run.sh",
+  "added": "2026-09-17"
+}

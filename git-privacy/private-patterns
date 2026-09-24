@@ -1,0 +1,7 @@
+# Shared by every repo on every Mac (installed into ~/.config/git/ignore by `git_privacy.py install`).
+# Matching files stay in the working folder (iCloud syncs them between Macs) and never reach GitHub.
+AI-README.md
+_private/
+_notes/
+*.private.*
+installed-macs.json

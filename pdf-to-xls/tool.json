@@ -1,0 +1,25 @@
+{
+  "name": "PDF to XLS",
+  "icon": "📄",
+  "section": "Contacts & data",
+  "kind": "mac-script",
+  "status": "public",
+  "featured": false,
+  "category": "productivity",
+  "tags": [
+    "mac-tool",
+    "pdf",
+    "excel",
+    "conversion"
+  ],
+  "color": "linear-gradient(135deg, #ff9f43, #62a8ff)",
+  "summary": "Extracts PDF text with poppler and writes a quick Excel workbook for rough table recovery.",
+  "story": "Somebody always sends the numbers as a PDF. This is the little bridge from inert document to spreadsheet-shaped thing I can sort, inspect, and use.",
+  "launcher": {
+    "entry": "pdftoxls.sh",
+    "short": "Convert PDF tables to Excel",
+    "long": "Pulls tabular data out of a PDF and writes it to a spreadsheet — handy for statements, reports, and invoices that only come as PDFs."
+  },
+  "store_path": "pdf-to-xls/pdftoxls.sh",
+  "added": "2026-05-01"
+}

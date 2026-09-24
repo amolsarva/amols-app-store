@@ -256,7 +256,7 @@ class EditDescDialog(tk.Toplevel):
         self.resizable(False, False)
         self.grab_set()
 
-        tk.Label(self, text=f"Description for "{card.name}"",
+        tk.Label(self, text=f"Description for “{card.name}”",
                  font=FONT_HEADING, fg=TEXT_PRIMARY, bg=BG_DARK,
                  pady=16).pack()
 

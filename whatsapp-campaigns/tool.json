@@ -1,0 +1,25 @@
+{
+  "name": "WhatsApp Campaign Studio",
+  "icon": "🟢",
+  "section": "Messaging campaigns (outreach)",
+  "kind": "mac-script",
+  "status": "public",
+  "featured": false,
+  "category": "productivity",
+  "tags": [
+    "mac-tool",
+    "whatsapp",
+    "outreach",
+    "node"
+  ],
+  "color": "linear-gradient(135deg, #16a34a, #86efac)",
+  "summary": "The same careful, one-by-one outreach for WhatsApp: search history, review context, simulate or send, and bump people who didn't reply.",
+  "story": "",
+  "launcher": {
+    "entry": "run.sh",
+    "short": "Search and message WhatsApp contacts",
+    "long": "Finds private chats where a phrase appeared, lets you review each person and matching context, then simulates or sends a separate message to each. Archives campaigns, checks replies, and prepares bumps for people who did not respond. Dry-run is always the default."
+  },
+  "store_path": "whatsapp-campaigns/",
+  "added": "2026-05-01"
+}

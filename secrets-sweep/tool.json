@@ -1,0 +1,24 @@
+{
+  "name": "Secrets Sweep",
+  "icon": "🔐",
+  "section": "Keeping the machine healthy",
+  "kind": "mac-script",
+  "status": "public",
+  "featured": false,
+  "category": "mac-tool",
+  "tags": [
+    "mac-tool",
+    "security",
+    "secrets"
+  ],
+  "color": "linear-gradient(135deg, #7f1d1d, #f59e0b)",
+  "summary": "Audits a folder tree for API keys, tokens and credential files that drifted out of your vault, and can move them in.",
+  "story": "Keys end up in .env files, notes and old scripts. This finds them and moves them to one private vault with symlinks so nothing breaks.",
+  "launcher": {
+    "entry": "secrets-sweep.sh",
+    "short": "Find keys and secrets outside the vault",
+    "long": "Audits a folder tree for keys and credential files; --fix moves them into the vault and leaves symlinks."
+  },
+  "store_path": "secrets-sweep/secrets-sweep.sh",
+  "added": "2026-09-24"
+}

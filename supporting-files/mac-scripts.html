@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mac Scripts</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f2f2f7;
+    --surface: #ffffff;
+    --surface-2: #f2f2f7;
+    --border: rgba(0,0,0,0.08);
+    --border-strong: rgba(0,0,0,0.13);
+    --text: #1c1c1e;
+    --text-2: #48484a;
+    --text-3: #8e8e93;
+    --accent: #0071e3;
+    --accent-hover: #0077ed;
+    --accent-light: #e8f0fd;
+    --accent-text: #0040a0;
+    --green: #30d158;
+    --radius-sm: 8px;
+    --radius: 12px;
+    --radius-lg: 16px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-card: 0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e;
+      --surface: #2c2c2e;
+      --surface-2: #1c1c1e;
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.13);
+      --text: #f5f5f7;
+      --text-2: #ebebf5cc;
+      --text-3: #8e8e93;
+      --accent: #2997ff;
+      --accent-hover: #3aa3ff;
+      --accent-light: #1a2d4a;
+      --accent-text: #2997ff;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+      --shadow-card: 0 2px 8px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
+    }
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .window {
+    max-width: 640px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Titlebar */
+  .titlebar {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px 10px 86px; /* 86px left = space for native traffic lights */
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    background: rgba(255,255,255,0.85);
+    -webkit-app-region: drag; /* makes the bar drag the window */
+  }
+  @media (prefers-color-scheme: dark) {
+    .titlebar { background: rgba(44,44,46,0.85); }
+  }
+  /* buttons inside titlebar must opt out of drag */
+  .title-btn, .title-actions {
+    -webkit-app-region: no-drag;
+  }
+
+  .title-text {
+    flex: 1;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-3);
+    letter-spacing: -0.01em;
+  }
+
+  .title-actions { display: flex; gap: 6px; }
+  .title-btn {
+    display: flex; align-items: center; gap: 5px;
+    padding: 5px 10px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--text-2);
+    cursor: pointer;
+    text-decoration: none;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  .title-btn:hover { background: var(--border); }
+  .title-btn svg { opacity: 0.6; }
+
+  /* Search */
+  .search-wrap {
+    padding: 12px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 49px;
+    z-index: 9;
+  }
+  .search-inner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: 7px 12px;
+  }
+  .search-inner svg { flex-shrink: 0; opacity: 0.4; }
+  .search-inner input {
+    flex: 1;
+    border: none;
+    background: none;
+    outline: none;
+    font-size: 14px;
+    color: var(--text);
+    font-family: inherit;
+  }
+  .search-inner input::placeholder { color: var(--text-3); }
+  #clear-btn {
+    display: none;
+    background: var(--text-3);
+    border: none;
+    border-radius: 50%;
+    width: 16px; height: 16px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    opacity: 0.6;
+    padding: 0;
+  }
+  #clear-btn:hover { opacity: 1; }
+  #clear-btn svg { display: block; }
+
+  /* Script count header */
+  .section-header {
+    padding: 16px 20px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* Script cards */
+  .catalog {
+    padding: 0 12px 12px;
+    flex: 1;
+  }
+
+  .script-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+    box-shadow: var(--shadow-card);
+    transition: transform 0.1s, box-shadow 0.1s;
+    cursor: default;
+  }
+  .script-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1), 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  .script-icon {
+    width: 52px; height: 52px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 22px;
+  }
+
+  .script-body { flex: 1; min-width: 0; }
+  .script-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin-bottom: 1px;
+  }
+  .script-tag {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  .script-desc {
+    font-size: 12.5px;
+    color: var(--text-2);
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .launch-btn {
+    flex-shrink: 0;
+    padding: 7px 14px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: -0.01em;
+    transition: background 0.15s, transform 0.1s;
+    white-space: nowrap;
+  }
+  .launch-btn:hover { background: var(--accent-hover); }
+  .launch-btn:active { transform: scale(0.96); }
+
+  /* No results */
+  .empty {
+    display: none;
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-3);
+    font-size: 14px;
+  }
+  .empty.show { display: block; }
+
+  /* Footer */
+  .footer {
+    padding: 10px 20px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .footer-count {
+    font-size: 12px;
+    color: var(--text-3);
+  }
+  .footer-path {
+    font-family: "SF Mono", "Menlo", monospace;
+    font-size: 11px;
+    color: var(--text-3);
+    opacity: 0.7;
+  }
+
+  /* Icon color themes */
+  .ic-blue   { background: #dbeafe; } .ic-blue   svg { color: #1d4ed8; }
+  .ic-teal   { background: #ccfbf1; } .ic-teal   svg { color: #0f766e; }
+  .ic-purple { background: #ede9fe; } .ic-purple svg { color: #6d28d9; }
+  .ic-amber  { background: #fef3c7; } .ic-amber  svg { color: #b45309; }
+  .ic-coral  { background: #fee2e2; } .ic-coral  svg { color: #b91c1c; }
+  .ic-green  { background: #dcfce7; } .ic-green  svg { color: #15803d; }
+  .ic-pink   { background: #fce7f3; } .ic-pink   svg { color: #be185d; }
+  .ic-gray   { background: #f3f4f6; } .ic-gray   svg { color: #374151; }
+  .ic-orange { background: #ffedd5; } .ic-orange svg { color: #c2410c; }
+  .ic-sky    { background: #e0f2fe; } .ic-sky    svg { color: #0369a1; }
+  .ic-indigo { background: #e0e7ff; } .ic-indigo svg { color: #4338ca; }
+  .ic-rose   { background: #ffe4e6; } .ic-rose   svg { color: #be123c; }
+  .ic-lime   { background: #ecfccb; } .ic-lime   svg { color: #4d7c0f; }
+  .ic-violet { background: #f3e8ff; } .ic-violet svg { color: #7c3aed; }
+
+  @media (prefers-color-scheme: dark) {
+    .ic-blue   { background: #1e3a5f; } .ic-blue   svg { color: #93c5fd; }
+    .ic-teal   { background: #134e4a; } .ic-teal   svg { color: #5eead4; }
+    .ic-purple { background: #3b2a6e; } .ic-purple svg { color: #c4b5fd; }
+    .ic-amber  { background: #4a3000; } .ic-amber  svg { color: #fcd34d; }
+    .ic-coral  { background: #4a1111; } .ic-coral  svg { color: #fca5a5; }
+    .ic-green  { background: #14532d; } .ic-green  svg { color: #86efac; }
+    .ic-pink   { background: #4a1240; } .ic-pink   svg { color: #f9a8d4; }
+    .ic-gray   { background: #374151; } .ic-gray   svg { color: #d1d5db; }
+    .ic-orange { background: #431407; } .ic-orange svg { color: #fdba74; }
+    .ic-sky    { background: #082f49; } .ic-sky    svg { color: #7dd3fc; }
+    .ic-indigo { background: #1e1b4b; } .ic-indigo svg { color: #a5b4fc; }
+    .ic-rose   { background: #4c0519; } .ic-rose   svg { color: #fda4af; }
+    .ic-lime   { background: #1a2e05; } .ic-lime   svg { color: #bef264; }
+    .ic-violet { background: #2e1065; } .ic-violet svg { color: #d8b4fe; }
+  }
+</style>
+</head>
+<body>
+<div class="window">
+
+  <div class="titlebar">
+    <span class="title-text">Mac Scripts</span>
+    <div class="title-actions">
+      <a class="title-btn" href="https://github.com/amolsarva/amols-app-store" target="_blank">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+        GitHub
+      </a>
+      <button class="title-btn" onclick="openFolder()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+        Open folder
+      </button>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <div class="search-inner">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="search" placeholder="Search scripts…" oninput="filterScripts()" autocomplete="off" spellcheck="false">
+      <button id="clear-btn" onclick="clearSearch()" aria-label="Clear search">
+        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="section-header" id="section-label">14 scripts</div>
+
+  <div class="catalog" id="catalog">
+
+    <div class="script-card" data-name="abbu-to-csv" data-tag="contacts" data-desc="Takes the .abbu backup file that Apple Contacts creates and converts it into a plain CSV spreadsheet. Useful when you want to open your contacts in Excel, import them somewhere else, or just have a readable backup.">
+      <div class="script-icon ic-teal">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <div class="script-body">
+        <div class="script-tag">Contacts</div>
+        <div class="script-name">abbu-to-csv</div>
+        <div class="script-desc">Converts Apple Contacts .abbu backups to a plain CSV — readable in Excel or importable anywhere.</div>
+      </div>
+      <button class="launch-btn" onclick="launch('abbu-to-csv')">Launch</button>
+    </div>
+
+    <div class="script-card" data-name="bigfiles" data-tag="storage" data-desc="Scans your Mac and lists the largest folders and files sorted by size. Helps you figure out where your disk space actually went — usually Xcode simulators, unused VMs, or forgotten video files.">
+      <div class="script-icon ic-amber">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+      </div>
+      <div class="script-body">
+        <div class="script-tag">Storage</div>
+        <div class="script-name">bigfiles</div>
+        <div class="script-desc">Lists the largest folders and files on your Mac, sorted by size. Find what's eating your disk.</div>
+      </div>
+      <button class="launch-btn" onclick="launch('bigfiles')">Launch</button>
+    </div>
+
+    <div class="script-card" data-name="cleanicloud" data-tag="icloud" data-desc="Finds duplicate files and large items in your iCloud Drive and walks you through deleting them interactively. Useful when iCloud is full and the Manage Storage screen isn't telling you the full story.">
+      <div class="script-icon ic-blue">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+      </div>
+      <div class="script-body">
+        <div class="script-tag">iCloud</div>
+        <div class="script-name">cleanicloud</div>
+        <div class="script-desc">Interactive cleanup for iCloud Drive — finds duplicates and large items when Manage Storage isn't enough.</div>
+      </div>
+      <button class="launch-btn" onclick="launch('cleanicloud')">Launch</button>
+    </div>
+
+    <div class="script-card" data-name="cpu-guard" data-tag="performance" data-desc="Watches your CPU in the background and stops watched macOS background processes when they stay hot too long. Uses quiet action-only notifications instead of repeated alerts.">
+      <div class="script-icon ic-coral">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+      </div>
+      <div class="script-body">
+        <div class="script-tag">Performance</div>
+        <div class="script-name">cpu-guard</div>
+        <div class="script-desc">Stops runaway background processes when they stay hot too long. Quiet action-only notifications.</div>
+      </div>
+      <button class="launch-btn" onclick="launch('cpu-guard')">Launch</button>
+    </div>
+
+    <div class="script-card" data-name="downloads" data-tag="files" data-desc="Organizes your Downloads folder by sorting and archiving files so they stop accumulating into an unmanageable pile.">
+      <div class="script-icon ic-gray">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </div>
+      <div class="script-body">
+        <div class="script-tag">Files</div>
+        <div class="script-name">downloads</div>
+        <div class="script-desc">Sorts and archives your Downloads folder so it stops being a black hole of accumulated files.</div>
+      </div>
+      <button class="launch-btn" onclick="launch('downloads')">Launch</button>
+    </div>
+
+    <div class="script-card" data-name="drive-dedup" data-tag="storage" data-desc="Scans an external hard drive for duplicate files, then consolidates everything into a clean folder structure. Runs in two phases: first maps what's there, then moves things around. Good for drives backed up to multiple times without a plan.">
+      <div class="script-icon ic-orange">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+      </div>
+      <div class="script-body">
+        <div class="script-tag">Storage</div>
+        <div class="script-name">drive-dedup</div>
+        <div class="script-desc">Deduplicates an external drive in two phases: maps duplicates, then consolidates into a clean structure.</div>
+      </div>
+      <button class="launch-btn" onclick="launch('drive-dedup')">Launch</button>
+    </div>
+
+    <div class="script-card" data-name="github-autopush" data-tag="git" data-desc="Installs a background LaunchAgent that automatically commits and pushes your git repos to GitHub on a schedule. Set it up once and your local projects stay synced to GitHub without you having to remember to push.">
+      <div class="script-icon ic-purple">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+      </div>
+      <div class="script-body">
+        <div class="script-tag">Git</div>
+        <div class="script-name">github-autopush</div>
+        <div class="script-desc">Installs a LaunchAgent that auto-commits and pushes your repos on a schedule. Set once, stays synced.</div>
+      </div>
+      <button class="launch-btn" onclick="launch('github-autopush')">Launch</button>
+    </div>
+
+    <div class="script-card" data-name="google-voice-exporter-extension" data-tag="export" data-desc="Chrome extension that exports your Google Voice message history so it isn't locked inside Google's interface.">
+      <div class="script-icon ic-green">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.08 6.08l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 17z"/></svg>
+      </div>
+      <div class="script-body">
+        <div class="script-tag">Export</div>
+        <div class="script-name">google-voice-exporter</div>
+        <div class="script-desc">Chrome extension to export your Google Voice message history out of Google's walled garden.</div>
+      </div>
+      <button class="launch-btn" onclick="launch('google-voice-exporter-extension')">Launch</button>
+    </div>
+
+    <div class="script-card" data-name="rescue-hq" data-tag="photos" data-desc="Google Photos Space Rescue HQ: merge a Takeout zip set, sort into flat PHOTOS and per-year VIDEOS, and repair Takeout damage. Dry-runs everything, deletes nothing.">
+      <div class="script-icon ic-sky">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </div>
+      <div class="script-body">
+        <div class="script-tag">Photos</div>
+        <div class="script-name">rescue-hq</div>
+        <div class="script-desc">Google Photos Space Rescue HQ — merge Takeout zips, sort photos flat and videos by year, repair bad extensions and Live Photo clutter.</div>
+      </div>
+      <button class="launch-btn" onclick="launch('rescue-hq')">Launch</button>
+    </div>
+
+    <div class="script-card" data-name="imessage-cleanup" data-tag="messages" data-desc="Exports per-person Messages archives (database, transcript, media) and frees iCloud space.">
+      <div class="script-icon ic-sky">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </div>
+      <div class="script-body">
+        <div class="script-tag">Messages</div>
+        <div class="script-name">imessage-cleanup</div>
+        <div class="script-desc">Exports per-person Messages archives (database, transcript, media) and frees iCloud space.</div>
+      </div>
+      <button class="launch-btn" onclick="launch('imessage-cleanup')">Launch</button>
+    </div>
+
+    <div class="script-card" data-name="voicememocleaner" data-tag="audio" data-desc="Exports every Voice Memo (original + compressed copies) with metadata sidecars — title, date, duration, and GPS location where available — into one browsable folder for analysis and archival.">
+      <div class="script-icon ic-violet">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      </div>
+      <div class="script-body">
+        <div class="script-tag">Audio</div>
+        <div class="script-name">voicememocleaner</div>
+        <div class="script-desc">Exports and compresses every Voice Memo with title/date/duration/GPS metadata sidecars for analysis and archival.</div>
+      </div>
+      <button class="launch-btn" onclick="launch('voicememocleaner')">Launch</button>
+    </div>
+
+    <div class="script-card" data-name="mac-migrator" data-tag="migration" data-desc="Bundles your Mac's configuration — shell settings, LaunchAgents, background tasks, dotfiles — into a portable archive you can restore on a new machine. Saves hours of re-configuring when you get a new Mac.">
+      <div class="script-icon ic-indigo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      </div>
+      <div class="script-body">
+        <div class="script-tag">Migration</div>
+        <div class="script-name">mac-migrator</div>
+        <div class="script-desc">Packs your dotfiles, LaunchAgents, and shell config into a portable archive for your next Mac.</div>
+      </div>
+      <button class="launch-btn" onclick="launch('mac-migrator')">Launch</button>
+    </div>
+
+    <div class="script-card" data-name="meet-tab-sidecar-extension" data-tag="meetings" data-desc="Chrome extension that keeps a Google Meet tab pinned and focused in its own browser window so it doesn't get lost in your tab pile.">
+      <div class="script-icon ic-lime">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+      </div>
+      <div class="script-body">
+        <div class="script-tag">Meetings</div>
+        <div class="script-name">meet-tab-sidecar</div>
+        <div class="script-desc">Keeps a Google Meet tab pinned in its own dedicated window — never lose it in the tab pile again.</div>
+      </div>
+      <button class="launch-btn" onclick="launch('meet-tab-sidecar-extension')">Launch</button>
+    </div>
+
+    <div class="script-card" data-name="pdf-to-xls" data-tag="documents" data-desc="Converts PDF tables into Excel spreadsheets so the data is actually usable. Good for bank statements, reports, and any PDF where the content is really a table you want to work with.">
+      <div class="script-icon ic-rose">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      </div>
+      <div class="script-body">
+        <div class="script-tag">Documents</div>
+        <div class="script-name">pdf-to-xls</div>
+        <div class="script-desc">Converts PDF tables to Excel. Good for bank statements and reports where you actually need the data.</div>
+      </div>
+      <button class="launch-btn" onclick="launch('pdf-to-xls')">Launch</button>
+    </div>
+
+    <div class="script-card" data-name="personalcontacts-analyzer" data-tag="contacts" data-desc="Reads your Contacts database and produces stats and insights about your network — who you have info on, gaps in your address book, duplicate entries, and who's missing an email or phone number.">
+      <div class="script-icon ic-violet">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      </div>
+      <div class="script-body">
+        <div class="script-tag">Contacts</div>
+        <div class="script-name">personalcontacts-analyzer</div>
+        <div class="script-desc">Analyzes your Contacts DB for gaps, duplicates, and network stats. Good before a contacts cleanup pass.</div>
+      </div>
+      <button class="launch-btn" onclick="launch('personalcontacts-analyzer')">Launch</button>
+    </div>
+
+    <div class="script-card" data-name="screenshot-tidy" data-tag="files" data-desc="Watches your Desktop for new screenshots and automatically moves them into dated folders so they don't pile up. Installs as a background watcher — you take a screenshot, it disappears from your Desktop into a tidy folder within seconds.">
+      <div class="script-icon ic-pink">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      </div>
+      <div class="script-body">
+        <div class="script-tag">Files</div>
+        <div class="script-name">screenshot-tidy</div>
+        <div class="script-desc">Background watcher that moves new screenshots from your Desktop into dated folders within seconds.</div>
+      </div>
+      <button class="launch-btn" onclick="launch('screenshot-tidy')">Launch</button>
+    </div>
+
+  </div>
+
+  <div class="empty" id="empty-state">No scripts match that search.</div>
+
+  <div class="footer">
+    <span class="footer-count" id="footer-count">14 scripts</span>
+    <span class="footer-path">~/Documents/root/mac-scripts</span>
+  </div>
+
+</div>
+
+<script>
+const API = 'http://127.0.0.1:9741';
+
+function filterScripts() {
+  const q = document.getElementById('search').value.toLowerCase().trim();
+  const cards = document.querySelectorAll('.script-card');
+  const clearBtn = document.getElementById('clear-btn');
+  const label = document.getElementById('section-label');
+  const footerCount = document.getElementById('footer-count');
+  const empty = document.getElementById('empty-state');
+
+  clearBtn.style.display = q ? 'flex' : 'none';
+
+  let visible = 0;
+  cards.forEach(card => {
+    const name = card.dataset.name.toLowerCase();
+    const tag = card.dataset.tag.toLowerCase();
+    const desc = card.dataset.desc.toLowerCase();
+    const show = !q || name.includes(q) || tag.includes(q) || desc.includes(q);
+    card.style.display = show ? 'flex' : 'none';
+    if (show) visible++;
+  });
+
+  const text = q
+    ? (visible === 0 ? 'No results' : visible + (visible === 1 ? ' result' : ' results'))
+    : '14 scripts';
+  label.textContent = text;
+  footerCount.textContent = visible + ' script' + (visible !== 1 ? 's' : '');
+  empty.classList.toggle('show', visible === 0 && q.length > 0);
+}
+
+function clearSearch() {
+  document.getElementById('search').value = '';
+  filterScripts();
+  document.getElementById('search').focus();
+}
+
+function launch(name) {
+  const btn = event.currentTarget || event.target;
+  const orig = btn.textContent;
+  btn.textContent = 'Launching…';
+  btn.style.background = '#30d158';
+  btn.disabled = true;
+
+  fetch(`${API}/api/launch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name })
+  })
+  .then(r => r.json())
+  .then(() => {
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.style.background = '';
+      btn.disabled = false;
+    }, 1600);
+  })
+  .catch(() => {
+    btn.textContent = 'Error';
+    btn.style.background = '#ff453a';
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.style.background = '';
+      btn.disabled = false;
+    }, 2000);
+  });
+}
+
+function openFolder() {
+  fetch(`${API}/api/open-folder`).catch(() => {});
+}
+
+// Wire up launch buttons by data-name so onclick doesn't need event
+document.querySelectorAll('.launch-btn').forEach(btn => {
+  const name = btn.closest('.script-card').dataset.name;
+  btn.onclick = (e) => { e.currentTarget = btn; launch(name); };
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "name": "iMessage Sync",
+  "icon": "🌙",
+  "section": "Messages: archive & backup",
+  "kind": "mac-script",
+  "status": "public",
+  "featured": true,
+  "category": "storage",
+  "tags": [
+    "mac-tool",
+    "imessage",
+    "backup",
+    "ai-ready",
+    "sqlite",
+    "launchd"
+  ],
+  "color": "linear-gradient(135deg, #3b2f8f, #1f6feb)",
+  "summary": "Every night, your whole iMessage history becomes a folder people and AIs can read: Markdown per person and per day, a searchable database, and photos, videos and PDFs sorted and shrunk.",
+  "story": "Messages hides your conversations in a database no other app can open and quietly offloads old photos. iMessage Sync copies everything out every night and never forgets, even after you clean up Messages. It heals itself: catches up after sleep, retries with backoff, and a doctor command tells you exactly what to fix.",
+  "launcher": {
+    "entry": "run.sh",
+    "short": "Nightly archive of every conversation, for people and AIs",
+    "long": "Every night: all conversations to Markdown + a searchable SQLite db, attachments sorted by type (photos/videos/PDFs/audio) and shrunk. Self-healing schedule, dashboard, doctor, per-person pipelines."
+  },
+  "store_path": "imessage-sync/",
+  "added": "2026-09-24"
+}

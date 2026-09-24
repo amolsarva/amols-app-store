@@ -1,0 +1,23 @@
+{
+  "name": "Gmail Attachment Wingman",
+  "icon": "📎",
+  "section": "Chrome extensions",
+  "kind": "chrome-extension",
+  "status": "public",
+  "featured": false,
+  "category": "productivity",
+  "tags": [
+    "chrome-extension",
+    "gmail"
+  ],
+  "color": "linear-gradient(135deg,#dc2626,#fbbf24)",
+  "summary": "Grabs attachments out of Gmail in bulk so you're not saving them one click at a time.",
+  "story": "",
+  "launcher": {
+    "entry": "",
+    "short": "Grabs attachments out of Gmail in bulk so you're not saving ",
+    "long": "Grabs attachments out of Gmail in bulk so you're not saving them one click at a time."
+  },
+  "store_path": "gmail-attachment-wingman-extension/",
+  "added": "2026-05-01"
+}

@@ -1,0 +1,25 @@
+{
+  "name": "CPU Guard",
+  "icon": "🔥",
+  "section": "Keeping the machine healthy",
+  "kind": "mac-script",
+  "status": "public",
+  "featured": false,
+  "category": "monitoring",
+  "tags": [
+    "mac-tool",
+    "cpu",
+    "watchdog",
+    "python"
+  ],
+  "color": "linear-gradient(135deg, #ff705d, #b993ff)",
+  "summary": "Stops known noisy macOS background processes after sustained high CPU, with quiet action-only notifications.",
+  "story": "My computer should spend cycles on writing, calls, code, and research, not an invisible daemon melting the fan. This is a small guardrail for flow.",
+  "launcher": {
+    "entry": "cpu-guard-install.sh",
+    "short": "Stop runaway background processes",
+    "long": "Installs a background watcher that throttles macOS background processes when they stay hot too long, using quiet action-only notifications instead of repeated alerts."
+  },
+  "store_path": "cpu-guard/cpu_guard.py",
+  "added": "2026-05-01"
+}

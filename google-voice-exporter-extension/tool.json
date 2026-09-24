@@ -1,0 +1,25 @@
+{
+  "name": "Google Voice Exporter",
+  "icon": "☎️",
+  "section": "Chrome extensions",
+  "kind": "chrome-extension",
+  "status": "public",
+  "featured": false,
+  "category": "contacts",
+  "tags": [
+    "mac-tool",
+    "chrome",
+    "contacts",
+    "export"
+  ],
+  "color": "linear-gradient(135deg, #ff6fae, #ff9f43)",
+  "summary": "Exports the open Google Voice thread as JSON, CSV, or TXT with attachment URLs and logs.",
+  "story": "The phone is still where half of real life happens: founders, contractors, school, family, buildings, quick deals. This makes those threads portable before they disappear behind somebody else's interface.",
+  "launcher": {
+    "entry": "run.sh",
+    "short": "Exports the open Google Voice thread as JSON, CSV, or TXT wi",
+    "long": "Exports the open Google Voice thread as JSON, CSV, or TXT with attachment URLs and logs."
+  },
+  "store_path": "google-voice-exporter-extension/",
+  "added": "2026-05-01"
+}

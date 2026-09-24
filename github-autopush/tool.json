@@ -1,0 +1,25 @@
+{
+  "name": "GitHub Autopush",
+  "icon": "↻",
+  "section": "Keeping the machine healthy",
+  "kind": "mac-script",
+  "status": "public",
+  "featured": false,
+  "category": "productivity",
+  "tags": [
+    "mac-tool",
+    "git",
+    "launchagent",
+    "sync"
+  ],
+  "color": "linear-gradient(135deg, #44d17d, #1f9a6a)",
+  "summary": "Keeps local repos moving to GitHub with readable commits and a background LaunchAgent.",
+  "story": "Ship While You Sleep, but for the pile of local experiments. I make a lot of small things; this keeps the good ones from living only on one laptop.",
+  "launcher": {
+    "entry": "github-autopush-manager.sh",
+    "short": "Auto-push git repos to GitHub",
+    "long": "Installs a background LaunchAgent that automatically commits and pushes your git repos to GitHub on a schedule. Set it up once and your projects stay synced without you remembering to push."
+  },
+  "store_path": "github-autopush/",
+  "added": "2026-05-01"
+}

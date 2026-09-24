@@ -15,8 +15,8 @@
 
 set -uo pipefail
 
-ROOT="$HOME/Documents/root"
-VAULT="$ROOT/utils and keys/vault"
+ROOT="${SWEEP_ROOT:-$HOME/Documents/root}"          # folder tree to audit
+VAULT="${SWEEP_VAULT:-$ROOT/utils and keys/vault}"  # where secrets belong
 FIX=false; YES=false
 for a in "$@"; do
   case "$a" in

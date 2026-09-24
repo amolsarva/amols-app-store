@@ -1,0 +1,25 @@
+{
+  "name": "Drive Dedup",
+  "icon": "💿",
+  "section": "Storage & cleanup",
+  "kind": "mac-script",
+  "status": "public",
+  "featured": false,
+  "category": "storage",
+  "tags": [
+    "mac-tool",
+    "external-drive",
+    "duplicates",
+    "python"
+  ],
+  "color": "linear-gradient(135deg, #b993ff, #62a8ff)",
+  "summary": "Scans external drives for duplicates and plans a clean consolidation with checkpoints.",
+  "story": "Old drives are archaeological sites. The goal is not just delete duplicates; it is recover the useful record without losing the weird valuable thing.",
+  "launcher": {
+    "entry": "run.sh",
+    "short": "Deduplicate an external drive",
+    "long": "Scans an external drive for duplicates and consolidates everything into a clean folder structure. Runs in two phases: first it maps what's there, then it moves things around."
+  },
+  "store_path": "drive-dedup/",
+  "added": "2026-05-01"
+}

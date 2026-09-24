@@ -1,0 +1,25 @@
+{
+  "name": "Clean iCloud",
+  "icon": "☁️",
+  "section": "Storage & cleanup",
+  "kind": "mac-script",
+  "status": "public",
+  "featured": false,
+  "category": "storage",
+  "tags": [
+    "mac-tool",
+    "icloud",
+    "duplicates",
+    "large-files"
+  ],
+  "color": "linear-gradient(135deg, #55d6c2, #2f80ed)",
+  "summary": "Finds iCloud duplicates and suspiciously large clusters, then asks before removing anything.",
+  "story": "The cloud is useful until it becomes a rent-seeking attic. This is for the recurring moment when I want the machine to show me the mess plainly before I clean it.",
+  "launcher": {
+    "entry": "cleanicloud.sh",
+    "short": "Clean up iCloud Drive",
+    "long": "Finds duplicate and large files in your iCloud Drive and walks you through deleting them interactively — useful when iCloud is full and Manage Storage isn't telling the whole story."
+  },
+  "store_path": "cleanicloud/cleanicloud.sh",
+  "added": "2026-05-01"
+}

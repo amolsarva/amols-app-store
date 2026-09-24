@@ -1,0 +1,23 @@
+{
+  "name": "Mac Scripts Launcher",
+  "icon": "🚀",
+  "section": "Keeping the machine healthy",
+  "kind": "mac-script",
+  "status": "public",
+  "featured": false,
+  "category": "mac-tool",
+  "tags": [
+    "mac-tool",
+    "launcher"
+  ],
+  "color": "linear-gradient(135deg,#0f766e,#5eead4)",
+  "summary": "A native-feeling little app to browse and launch everything in this collection from one window.",
+  "story": "",
+  "launcher": {
+    "entry": "launcher.py",
+    "short": "A native-feeling little app to browse and launch everything ",
+    "long": "A native-feeling little app to browse and launch everything in this collection from one window."
+  },
+  "store_path": "mac-scripts-launcher/",
+  "added": "2026-05-01"
+}

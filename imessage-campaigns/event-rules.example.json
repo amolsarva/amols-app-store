@@ -1,0 +1,10 @@
+[
+  {
+    "label": "Summer rooftop party",
+    "pattern": "rooftop party.{0,80}(?:rsvp|saturday)|123 example street"
+  },
+  {
+    "label": "Book launch dinner",
+    "pattern": "book launch dinner|launch party for .{0,40}book"
+  }
+]

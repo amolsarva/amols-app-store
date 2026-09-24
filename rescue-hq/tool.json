@@ -1,0 +1,26 @@
+{
+  "name": "Google Photos Space Rescue HQ",
+  "icon": "🛟",
+  "section": "Storage & cleanup",
+  "kind": "mac-script",
+  "status": "public",
+  "featured": true,
+  "category": "storage",
+  "tags": [
+    "mac-tool",
+    "photos",
+    "google-takeout",
+    "storage",
+    "exiftool"
+  ],
+  "color": "linear-gradient(135deg, #0071e3, #30d158)",
+  "summary": "Merge a Google Takeout zip set, sort it into flat PHOTOS and per-year VIDEOS, and repair what Takeout breaks.",
+  "story": "Getting a child's photo library out of Google is not one problem but five: the download arrives as fifteen 10GB zips, half the videos are Live Photo clips that count against your quota, thousands of files are duplicates, the extensions lie about what the files actually are, and the true capture dates live in sidecars Google ignores on re-upload. This handles all of it in one place, dry-running every stage and deleting nothing.",
+  "launcher": {
+    "entry": "rescue.sh",
+    "short": "Google Photos Space Rescue HQ",
+    "long": "Everything for a Google Takeout photo rescue in one place. Checks and installs dependencies, merges a multi-part zip set, sorts the result into PHOTOS/ (one flat folder to drag-upload) and VIDEOS/<year>/ (flat, for stitching), and repairs common Takeout damage — Live Photo motion clips, duplicates, screenshots, JSON sidecars, and files whose extension lies about their contents. Dry-runs every stage and deletes nothing."
+  },
+  "store_path": "rescue-hq/rescue.sh",
+  "added": "2026-09-17"
+}

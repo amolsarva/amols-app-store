@@ -16,14 +16,7 @@ swift build -c release --scratch-path "$SCRATCH"
 BIN="$(swift build -c release --scratch-path "$SCRATCH" --show-bin-path)/Backstage"
 
 echo "==> Making the app icon"
-ICONSET="$SCRATCH/AppIcon.iconset"
-rm -rf "$ICONSET"; mkdir -p "$ICONSET"
-swift tools/make-icon.swift "$SCRATCH/icon-1024.png" >/dev/null
-for s in 16 32 64 128 256 512; do
-  sips -z $s $s "$SCRATCH/icon-1024.png" --out "$ICONSET/icon_${s}x${s}.png" >/dev/null
-  d=$((s*2)); sips -z $d $d "$SCRATCH/icon-1024.png" --out "$ICONSET/icon_${s}x${s}@2x.png" >/dev/null
-done
-iconutil -c icns "$ICONSET" -o "$SCRATCH/AppIcon.icns"
+swift ../supporting-files/icons/make-app-icon.swift "$SCRATCH/AppIcon.icns" terminal.fill "#6D5BD0" "#2B2254" gearshape.2.fill >/dev/null
 
 echo "==> Assembling $APP"
 rm -rf "$APP"

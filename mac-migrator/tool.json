@@ -1,0 +1,25 @@
+{
+  "name": "Mac Migrator",
+  "icon": "🖥️",
+  "section": "Keeping the machine healthy",
+  "kind": "mac-script",
+  "status": "public",
+  "featured": false,
+  "category": "migration",
+  "tags": [
+    "mac-tool",
+    "migration",
+    "launchagents",
+    "dotfiles"
+  ],
+  "color": "linear-gradient(135deg, #cbd5e1, #64748b)",
+  "summary": "Bundles LaunchAgents, shell config, automation folders, brew lists, diagnostics, and restore steps.",
+  "story": "I have rebuilt the same working environment across too many machines. This turns a Mac migration from oral tradition into an actual written system.",
+  "launcher": {
+    "entry": "mac_background_migrator.sh",
+    "short": "Pack up your Mac for migration",
+    "long": "Bundles your Mac's configuration — shell settings, LaunchAgents, background tasks, dotfiles — into a portable archive you can restore on a new machine. Saves hours of reconfiguring from scratch."
+  },
+  "store_path": "mac-migrator/mac_background_migrator.sh",
+  "added": "2026-05-01"
+}

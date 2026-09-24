@@ -1,0 +1,25 @@
+{
+  "name": "iMessage Campaign Studio",
+  "icon": "📣",
+  "section": "Messaging campaigns (outreach)",
+  "kind": "mac-script",
+  "status": "public",
+  "featured": false,
+  "category": "productivity",
+  "tags": [
+    "mac-tool",
+    "imessage",
+    "outreach",
+    "python"
+  ],
+  "color": "linear-gradient(135deg, #0ea5e9, #6366f1)",
+  "summary": "Find people by what you've talked about before, review each one, then send separate personal texts, with dry-run first and reply-aware follow-ups.",
+  "story": "Group texts are rude and BCC doesn't exist in Messages. This searches your own history for everyone who, say, came to last year's party, lets you review the list with context, and sends each person their own message.",
+  "launcher": {
+    "entry": "run.sh",
+    "short": "Send birthday invites via Messages",
+    "long": "Sends (and follows up on) birthday invites through Messages.app, with a dry-run mode to preview before anything goes out. Keeps its own sent-log in this folder."
+  },
+  "store_path": "imessage-campaigns/",
+  "added": "2026-09-24"
+}

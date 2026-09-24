@@ -1,0 +1,25 @@
+{
+  "name": "Bigfiles",
+  "icon": "📦",
+  "section": "Storage & cleanup",
+  "kind": "mac-script",
+  "status": "public",
+  "featured": false,
+  "category": "storage",
+  "tags": [
+    "mac-tool",
+    "disk",
+    "audit",
+    "archive"
+  ],
+  "color": "linear-gradient(135deg, #f0c45b, #ff705d)",
+  "summary": "Finds heavy folders and checks recent activity before I decide what to archive.",
+  "story": "A Mac accumulates the sediment of every company, course, podcast, trip, and project. Bigfiles is the map before the excavation.",
+  "launcher": {
+    "entry": "bigfiles.sh",
+    "short": "Find disk hogs",
+    "long": "Scans your Mac and lists the largest folders and files by size, so you can see where the disk space actually went — old simulators, unused VMs, forgotten videos."
+  },
+  "store_path": "bigfiles/bigfiles.sh",
+  "added": "2026-05-01"
+}

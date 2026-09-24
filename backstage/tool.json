@@ -1,0 +1,25 @@
+{
+  "name": "Backstage",
+  "icon": "🎛️",
+  "section": "Keeping the machine healthy",
+  "kind": "mac-script",
+  "status": "public",
+  "featured": false,
+  "category": "mac-tool",
+  "tags": [
+    "mac-tool",
+    "launchd",
+    "swiftui",
+    "automation"
+  ],
+  "color": "linear-gradient(135deg, #111827, #6b7280)",
+  "summary": "A menu-bar command center for everything running in the background on your Mac: LaunchAgents, cron, your own scripts, with run history and one-click repairs.",
+  "story": "Backstage lists every background job, explains what it does, spots crash loops and missing scripts, and runs your scripts with live output and history.",
+  "launcher": {
+    "entry": "build.sh",
+    "short": "Background jobs + scripts command center",
+    "long": "Lists launchd jobs, cron and your scripts; runs scripts with live output and history; diagnoses and repairs broken LaunchAgents."
+  },
+  "store_path": "backstage/",
+  "added": "2026-09-24"
+}

@@ -29,6 +29,7 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 
 # ── 3. Copy the Python script in ─────────────────────────────
 cp "$LAUNCHER_PY" "$APP_BUNDLE/Contents/Resources/launcher.py"
+cp "$(dirname "$0")/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/AppIcon.icns" 2>/dev/null || true
 
 # ── 4. Write the launcher shell script ───────────────────────
 cat > "$APP_BUNDLE/Contents/MacOS/$APP_NAME" << 'LAUNCHER'
@@ -62,6 +63,7 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << PLIST
     <key>CFBundleVersion</key>          <string>1.0</string>
     <key>CFBundleExecutable</key>       <string>Mac Scripts Launcher</string>
     <key>CFBundlePackageType</key>      <string>APPL</string>
+    <key>CFBundleIconFile</key>         <string>AppIcon</string>
     <key>LSMinimumSystemVersion</key>   <string>11.0</string>
     <key>NSHighResolutionCapable</key>  <true/>
     <key>LSUIElement</key>              <false/>

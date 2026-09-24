@@ -1,0 +1,25 @@
+{
+  "name": "Contacts Analyzer",
+  "icon": "📊",
+  "section": "Contacts & data",
+  "kind": "mac-script",
+  "status": "public",
+  "featured": false,
+  "category": "contacts",
+  "tags": [
+    "mac-tool",
+    "gmail",
+    "sqlite",
+    "analysis"
+  ],
+  "color": "linear-gradient(135deg, #f0c45b, #44d17d)",
+  "summary": "Archives Gmail headers locally and builds relationship and activity reports without message bodies.",
+  "story": "I like systems that reveal patterns without making a privacy bonfire. This shows the shape of a network while leaving the actual correspondence alone.",
+  "launcher": {
+    "entry": "pca.py",
+    "short": "Analyze your contacts & relationships",
+    "long": "Reads your Contacts database and produces stats about your network — who you have info on, gaps in your address book, duplicates, and missing emails or phone numbers."
+  },
+  "store_path": "personalcontacts-analyzer/",
+  "added": "2026-05-01"
+}

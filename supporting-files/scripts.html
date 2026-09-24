@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Amol's App Store - Projects, Agents, and Mac Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    * { margin: 0; }
+
+    :root {
+      --bg: #101010;
+      --panel: #171717;
+      --panel-2: #232323;
+      --panel-3: #141414;
+      --text: #f4f7fb;
+      --muted: #a9b2bd;
+      --quiet: #77808c;
+      --line: #303030;
+      --green: #5bd186;
+      --blue: #79a7ff;
+      --pink: #f57aa7;
+      --gold: #e6bd57;
+      --red: #ef745f;
+      --teal: #63cfc3;
+      --purple: #b99cff;
+      --shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      min-height: 100vh;
+      background:
+        linear-gradient(180deg, rgba(230, 189, 87, 0.09), transparent 360px),
+        radial-gradient(circle at top left, rgba(91, 209, 134, 0.08), transparent 360px),
+        var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+      line-height: 1.5;
+      font-size: 16px;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button, input { font: inherit; }
+
+    .shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(14, 17, 22, 0.86);
+      backdrop-filter: blur(18px);
+    }
+
+    .topbar .shell {
+      min-height: 62px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      background: #10151c;
+      color: var(--green);
+      font: 700 18px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .brand-text strong {
+      display: block;
+      font-size: 0.95rem;
+      letter-spacing: 0;
+    }
+
+    .brand-text span {
+      display: block;
+      color: var(--quiet);
+      font-size: 0.78rem;
+      white-space: nowrap;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 0 14px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.06);
+      cursor: pointer;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(255, 255, 255, 0.24);
+      background: rgba(255, 255, 255, 0.10);
+    }
+
+    .btn.primary {
+      color: #08100c;
+      border-color: rgba(68, 209, 125, 0.5);
+      background: var(--green);
+      font-weight: 700;
+    }
+
+    .hero {
+      padding: 42px 0 22px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr);
+      gap: 28px;
+      align-items: stretch;
+    }
+
+    .hero-copy {
+      min-height: 320px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 22px;
+    }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      color: var(--green);
+      border: 1px solid rgba(68, 209, 125, 0.28);
+      border-radius: 999px;
+      background: rgba(68, 209, 125, 0.08);
+      padding: 7px 11px;
+      font: 700 0.78rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: clamp(2.6rem, 7vw, 6.2rem);
+      line-height: 0.94;
+      letter-spacing: 0;
+      max-width: 720px;
+    }
+
+    .hero-copy p {
+      max-width: 640px;
+      color: #c4cedb;
+      font-size: clamp(1rem, 2vw, 1.18rem);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      max-width: 560px;
+    }
+
+    .stat {
+      min-height: 74px;
+      padding: 13px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 1.3rem;
+      line-height: 1;
+    }
+
+    .stat span {
+      display: block;
+      margin-top: 8px;
+      color: var(--quiet);
+      font-size: 0.78rem;
+    }
+
+    .terminal {
+      min-height: 320px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      background: #090c10;
+      box-shadow: var(--shadow);
+    }
+
+    .terminal-bar {
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: #121820;
+      color: var(--quiet);
+      font: 0.78rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .dots {
+      display: flex;
+      gap: 7px;
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: var(--red);
+    }
+    .dot:nth-child(2) { background: var(--gold); }
+    .dot:nth-child(3) { background: var(--green); }
+
+    .terminal-body {
+      padding: 18px;
+      font: 0.88rem/1.72 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: #d8e1ec;
+    }
+
+    .line { display: block; min-height: 1.72em; }
+    .prompt { color: var(--green); }
+    .cmd { color: #ffffff; }
+    .ok { color: var(--teal); }
+    .warn { color: var(--gold); }
+    .dim { color: #738195; }
+
+    .toolbar {
+      margin: 8px 0 22px;
+      padding: 14px;
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 8px;
+      background: rgba(21, 26, 34, 0.92);
+      box-shadow: 0 12px 42px rgba(0, 0, 0, 0.18);
+    }
+
+    .search {
+      position: relative;
+      min-width: 0;
+    }
+
+    .search input {
+      width: 100%;
+      height: 46px;
+      padding: 0 14px 0 42px;
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      outline: 0;
+      background: #10151c;
+    }
+
+    .search input:focus { border-color: rgba(98, 168, 255, 0.72); }
+
+    .search span {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--quiet);
+    }
+
+    .new-badge { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 99px; background: #30d158; color: #fff; vertical-align: middle; }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .filter {
+      height: 34px;
+      padding: 0 12px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      color: #cbd5e1;
+      background: #10151c;
+      cursor: pointer;
+    }
+
+    .filter.active,
+    .filter:hover {
+      color: #08100c;
+      border-color: var(--green);
+      background: var(--green);
+    }
+
+    .howto {
+      margin: 18px 0 10px;
+      padding: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(91, 209, 134, 0.06), rgba(255, 255, 255, 0.02));
+    }
+
+    .howto h2 {
+      font-size: 1.28rem;
+      letter-spacing: 0;
+    }
+
+    .howto > p {
+      margin-top: 6px;
+      max-width: 640px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .howto-grid {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .howto-step {
+      position: relative;
+      padding: 16px 16px 16px 18px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .howto-step .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font: 700 0.74rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--green);
+    }
+
+    .howto-step h3 {
+      margin-top: 10px;
+      font-size: 1.02rem;
+      letter-spacing: 0;
+    }
+
+    .howto-step p {
+      margin-top: 7px;
+      color: #b9c4d3;
+      font-size: 0.86rem;
+      line-height: 1.5;
+    }
+
+    .howto-step .level {
+      display: inline-block;
+      margin-top: 11px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      color: #cbd5e1;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+    }
+
+    .howto-note {
+      margin-top: 16px;
+      padding: 13px 15px;
+      border-left: 3px solid var(--gold);
+      border-radius: 4px;
+      background: rgba(230, 189, 87, 0.07);
+      color: #d8d1bd;
+      font-size: 0.86rem;
+      line-height: 1.5;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 18px;
+      margin: 28px 0 14px;
+    }
+
+    .section-head h2 {
+      font-size: 1.28rem;
+      letter-spacing: 0;
+    }
+
+    .section-head p {
+      color: var(--quiet);
+      font-size: 0.9rem;
+    }
+
+    .featured-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .feature {
+      position: relative;
+      min-height: 180px;
+      padding: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--tone), rgba(255, 255, 255, 0.06));
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
+    }
+
+    .feature::after {
+      content: attr(data-icon);
+      position: absolute;
+      right: 18px;
+      bottom: -8px;
+      font-size: 5rem;
+      opacity: 0.22;
+      filter: saturate(1.2);
+    }
+
+    .feature h3 {
+      position: relative;
+      max-width: 240px;
+      font-size: 1.28rem;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .feature p {
+      position: relative;
+      margin-top: 10px;
+      max-width: 320px;
+      color: rgba(255, 255, 255, 0.78);
+      font-size: 0.9rem;
+    }
+
+    .feature a {
+      position: absolute;
+      left: 20px;
+      bottom: 18px;
+      display: inline-flex;
+      min-height: 32px;
+      align-items: center;
+      padding: 0 11px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.22);
+      font-weight: 700;
+      font-size: 0.82rem;
+    }
+
+    .app-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      padding-bottom: 60px;
+    }
+
+    .app-card {
+      min-height: 356px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 15px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.028));
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+
+    .app-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(255, 255, 255, 0.22);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+    }
+
+    .app-top {
+      display: grid;
+      grid-template-columns: 54px minmax(0, 1fr);
+      gap: 12px;
+      align-items: center;
+    }
+
+    .icon {
+      width: 54px;
+      height: 54px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      background: var(--icon-bg);
+      font-size: 1.75rem;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    }
+
+    .app-title {
+      min-width: 0;
+    }
+
+    .app-title h3 {
+      overflow-wrap: anywhere;
+      font-size: 1rem;
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    .app-title span {
+      display: block;
+      margin-top: 5px;
+      color: var(--quiet);
+      font-size: 0.78rem;
+    }
+
+    .app-card p {
+      color: #b9c4d3;
+      font-size: 0.88rem;
+      line-height: 1.48;
+    }
+
+    .app-card .summary {
+      color: #d1dae5;
+      flex: 0;
+    }
+
+    .app-card .story {
+      padding-top: 11px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      color: #9fabbb;
+      flex: 1;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip {
+      padding: 3px 7px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 999px;
+      color: #c6d1df;
+      background: rgba(255, 255, 255, 0.045);
+      font: 0.72rem/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .card-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .mini-btn {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      color: #dce6f3;
+      background: #10151c;
+      font-weight: 700;
+      font-size: 0.82rem;
+    }
+
+    .mini-btn.get {
+      color: #08100c;
+      background: #f4f7fb;
+    }
+
+    .mini-btn:hover {
+      border-color: rgba(255, 255, 255, 0.28);
+    }
+
+    .empty {
+      display: none;
+      padding: 36px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 8px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.04);
+      text-align: center;
+    }
+
+    footer {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 26px 0 38px;
+      color: var(--quiet);
+      font-size: 0.86rem;
+    }
+
+    footer .shell {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    footer a { color: #cbd5e1; }
+
+    @media (max-width: 980px) {
+      .hero { grid-template-columns: 1fr; }
+      .hero-copy { min-height: auto; }
+      .howto-grid { grid-template-columns: 1fr; }
+      .featured-grid { grid-template-columns: 1fr; }
+      .app-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .toolbar { grid-template-columns: 1fr; }
+      .filters { justify-content: flex-start; }
+    }
+
+    @media (max-width: 620px) {
+      .shell { width: min(100% - 22px, 1180px); }
+      .topbar .shell { align-items: flex-start; flex-direction: column; padding: 12px 0; }
+      .nav-actions { width: 100%; overflow-x: auto; padding-bottom: 2px; }
+      .hero { padding-top: 28px; }
+      .stats { grid-template-columns: 1fr; }
+      .app-grid { grid-template-columns: 1fr; }
+      .terminal-body { font-size: 0.78rem; }
+      .card-actions { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell">
+      <a class="brand" href="https://amolsarva.com">
+        <span class="brand-mark">$</span>
+        <span class="brand-text">
+          <strong>Amol's App Store</strong>
+          <span>agents, web apps, scripts</span>
+        </span>
+      </a>
+      <nav class="nav-actions" aria-label="Catalog links">
+        <a class="btn" href="#catalog">Browse</a>
+        <a class="btn" href="https://github.com/amolsarva" target="_blank" rel="noopener">GitHub Shelf</a>
+        <a class="btn primary" href="#catalog">Open Store</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="shell hero">
+      <div class="hero-copy">
+        <span class="kicker">16 working notes turned into products</span>
+        <h1>Amol's App Store</h1>
+        <p>A shelf of public experiments, agents, web apps, and Mac tools: oral-history bots, workplace-evidence systems, sleep jokes that became apps, and the small local utilities that keep the machine clean enough to keep shipping.</p>
+        <div class="stats" aria-label="Catalog stats">
+          <div class="stat"><strong id="stat-apps"></strong><span>apps and projects</span></div>
+          <div class="stat"><strong id="stat-featured"></strong><span>featured projects</span></div>
+          <div class="stat"><strong>0</strong><span>permission slips</span></div>
+        </div>
+      </div>
+
+      <aside class="terminal" aria-label="Install preview">
+        <div class="terminal-bar">
+          <div class="dots" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+          <span>~/amol/app-store</span>
+        </div>
+        <div class="terminal-body">
+          <span class="line"><span class="prompt">amol@mac</span> <span class="cmd">open dadsbot.vercel.app</span></span>
+          <span class="line ok">recording family history...</span>
+          <span class="line"><span class="prompt">amol@mac</span> <span class="cmd">uv run opensore</span></span>
+          <span class="line ok">building evidence timelines...</span>
+          <span class="line"><span class="prompt">amol@mac</span> <span class="cmd">open amolsarva.github.io/OpenSNORE</span></span>
+          <span class="line ok">snore engine armed...</span>
+          <span class="line warn">then: clean the Mac, export the record, push the repo</span>
+        </div>
+      </aside>
+    </section>
+
+    <section class="shell toolbar" aria-label="Search and filters">
+      <label class="search">
+        <span aria-hidden="true">⌕</span>
+        <input id="search" type="search" placeholder="Search apps, agents, scripts, jobs, tags..." autocomplete="off" />
+      </label>
+      <div class="filters" id="filters"></div>
+    </section>
+
+    <section class="shell">
+      <div class="howto" aria-label="How to get going">
+        <h2>How to get going</h2>
+        <p>You don't need to be a programmer. Everything here is one of three types — find the kind of tool you want, and follow the matching path.</p>
+        <div class="howto-grid">
+          <div class="howto-step">
+            <span class="badge">🌐 &nbsp;Web apps</span>
+            <h3>Just click and use</h3>
+            <p>Tools like <strong>DadsBot</strong> and <strong>OpenSnoRE</strong> open right in your browser. Hit <strong>Try</strong> on the card — nothing to download or install.</p>
+            <span class="level">No setup</span>
+          </div>
+          <div class="howto-step">
+            <span class="badge">🧩 &nbsp;Chrome extensions</span>
+            <h3>Add to Chrome once</h3>
+            <p>Open <code>chrome://extensions</code>, flip on <strong>Developer mode</strong> (top-right), click <strong>Load unpacked</strong>, and pick the extension's folder. It then lives in your toolbar.</p>
+            <span class="level">A little setup</span>
+          </div>
+          <div class="howto-step">
+            <span class="badge">🖥️ &nbsp;Mac scripts</span>
+            <h3>Download &amp; double-click</h3>
+            <p>Hit <strong>Get</strong>, then <strong>double-click</strong> the downloaded <code>.command</code> file — Terminal opens and runs it. Every cleanup tool shows you the mess and asks before deleting a thing.</p>
+            <span class="level">A little setup</span>
+          </div>
+        </div>
+        <div class="howto-note">
+          💡 First time opening a downloaded Mac script, macOS may warn it's from an "unidentified developer." Right-click the file → <strong>Open</strong> → <strong>Open</strong> once, and you're set. Want the full collection and per-tool instructions? See the <a href="https://github.com/amolsarva/amols-app-store" target="_blank" rel="noopener" style="color:var(--green);">GitHub shelf</a>.
+        </div>
+      </div>
+    </section>
+
+    <section class="shell">
+      <div class="section-head">
+        <div>
+          <h2>Featured</h2>
+          <p>The projects with their own product spine, public surface, or strange little gravity.</p>
+        </div>
+      </div>
+      <div class="featured-grid" id="featured"></div>
+    </section>
+
+    <section class="shell" id="catalog">
+      <div class="section-head">
+        <div>
+          <h2>All Apps</h2>
+          <p id="result-count"></p>
+        </div>
+      </div>
+      <div class="app-grid" id="apps"></div>
+      <div class="empty" id="empty">No apps match that search.</div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell">
+      <span>Built in the spirit of field notes: observe the mess, make the tool, put it where people can try it.</span>
+      <span><a href="https://amolsarva.com">amolsarva.com</a> / <a href="https://github.com/amolsarva" target="_blank" rel="noopener">github.com/amolsarva</a></span>
+    </div>
+  </footer>
+
+  <script>
+    // catalog:start
+    const apps = [
+  {
+    "id": "imessage-sync",
+    "name": "iMessage Sync",
+    "slug": "imessage-sync",
+    "icon": "🌙",
+    "category": "storage",
+    "tags": [
+      "mac-tool",
+      "imessage",
+      "backup",
+      "ai-ready",
+      "sqlite",
+      "launchd"
+    ],
+    "color": "linear-gradient(135deg, #3b2f8f, #1f6feb)",
+    "summary": "Every night, your whole iMessage history becomes a folder people and AIs can read: Markdown per person and per day, a searchable database, and photos, videos and PDFs sorted and shrunk.",
+    "story": "Messages hides your conversations in a database no other app can open and quietly offloads old photos. iMessage Sync copies everything out every night and never forgets, even after you clean up Messages. It heals itself: catches up after sleep, retries with backoff, and a doctor command tells you exactly what to fix.",
+    "path": "imessage-sync/",
+    "featured": true,
+    "isNew": true
+  },
+  {
+    "id": "rescue-hq",
+    "name": "Google Photos Space Rescue HQ",
+    "slug": "rescue-hq",
+    "icon": "🛟",
+    "category": "storage",
+    "tags": [
+      "mac-tool",
+      "photos",
+      "google-takeout",
+      "storage",
+      "exiftool"
+    ],
+    "color": "linear-gradient(135deg, #0071e3, #30d158)",
+    "summary": "Merge a Google Takeout zip set, sort it into flat PHOTOS and per-year VIDEOS, and repair what Takeout breaks.",
+    "story": "Getting a child's photo library out of Google is not one problem but five: the download arrives as fifteen 10GB zips, half the videos are Live Photo clips that count against your quota, thousands of files are duplicates, the extensions lie about what the files actually are, and the true capture dates live in sidecars Google ignores on re-upload. This handles all of it in one place, dry-running every stage and deleting nothing.",
+    "path": "rescue-hq/rescue.sh",
+    "featured": true,
+    "isNew": true
+  },
+  {
+    "id": "dadsbot",
+    "name": "DadsBot",
+    "slug": "dadsbot",
+    "icon": "🎙️",
+    "category": "ai",
+    "tags": [
+      "ai",
+      "oral-history",
+      "family",
+      "nextjs",
+      "public-app"
+    ],
+    "color": "linear-gradient(135deg, #f0c45b, #ff6fae)",
+    "summary": "A warm biographer-style interview app for capturing long-form oral histories with recording, transcription, memory primers, and session summaries.",
+    "story": "DadsBot is the family-recording project: one-button capture, automatic speech-to-text, assistant follow-ups, and a memory layer so the next conversation knows what came before.",
+    "path": "https://dadsbot.vercel.app",
+    "repoUrl": "https://github.com/amolsarva/dadsbot",
+    "liveUrl": "https://dadsbot.vercel.app",
+    "getLabel": "Try",
+    "featured": true
+  },
+  {
+    "id": "opensnore",
+    "name": "OpenSnoRE",
+    "slug": "OpenSNORE",
+    "icon": "💤",
+    "category": "web",
+    "tags": [
+      "web-app",
+      "pwa",
+      "audio",
+      "wellness",
+      "joke"
+    ],
+    "color": "linear-gradient(135deg, #44d17d, #55d6c2)",
+    "summary": "A browser app, PWA, and Mac-app experiment with fake snores for boring moments and guided exercises for quieter nights.",
+    "story": "OpenSnoRE started as a ridiculous snore button and grew into a playful sleep-audio lab: procedural snores, boring-situation theater, share loops, and a real stop-snoring side quest.",
+    "path": "https://amolsarva.github.io/OpenSNORE/",
+    "repoUrl": "https://github.com/amolsarva/OpenSNORE",
+    "liveUrl": "https://amolsarva.github.io/OpenSNORE/",
+    "getLabel": "Try",
+    "featured": true
+  },
+  {
+    "id": "opensore",
+    "name": "OpenSore",
+    "slug": "opensore",
+    "icon": "🕵️",
+    "category": "evidence",
+    "tags": [
+      "ai",
+      "legal",
+      "hr",
+      "evidence",
+      "python"
+    ],
+    "color": "linear-gradient(135deg, #62a8ff, #7c3aed)",
+    "summary": "AI-assisted workplace evidence investigation for lawyers, HR, boards, and compliance teams.",
+    "story": "OpenSore turns scattered emails, chats, documents, calendars, notes, and exports into source-backed timelines, contradiction checks, and structured investigation work product.",
+    "path": "https://github.com/amolsarva/opensore",
+    "repoUrl": "https://github.com/amolsarva/opensore",
+    "getLabel": "Repo",
+    "featured": true
+  },
+  {
+    "id": "voicememocleaner",
+    "name": "VOICEMEMOCLEANER",
+    "slug": "voicememocleaner",
+    "icon": "🎙️",
+    "category": "storage",
+    "tags": [
+      "mac-tool",
+      "audio",
+      "export",
+      "sqlite",
+      "metadata"
+    ],
+    "color": "linear-gradient(135deg, #7c3aed, #b99cff)",
+    "summary": "Exports every Voice Memo — original and compressed copies — with title, date, duration, and GPS metadata for analysis and archival.",
+    "story": "Voice Memos pile up and iCloud never makes them easy to actually use. This reads the Voice Memos database directly, drops full-quality and space-saving copies of every recording into one folder, and pulls out whatever GPS/time metadata is embedded so the pile becomes something you can sort, search, and listen back through.",
+    "path": "voicememocleaner/run.sh",
+    "isNew": true
+  },
+  {
+    "id": "imessage-campaigns",
+    "name": "iMessage Campaign Studio",
+    "slug": "imessage-campaigns",
+    "icon": "📣",
+    "category": "productivity",
+    "tags": [
+      "mac-tool",
+      "imessage",
+      "outreach",
+      "python"
+    ],
+    "color": "linear-gradient(135deg, #0ea5e9, #6366f1)",
+    "summary": "Find people by what you've talked about before, review each one, then send separate personal texts, with dry-run first and reply-aware follow-ups.",
+    "story": "Group texts are rude and BCC doesn't exist in Messages. This searches your own history for everyone who, say, came to last year's party, lets you review the list with context, and sends each person their own message.",
+    "path": "imessage-campaigns/",
+    "isNew": true
+  },
+  {
+    "id": "backstage",
+    "name": "Backstage",
+    "slug": "backstage",
+    "icon": "🎛️",
+    "category": "mac-tool",
+    "tags": [
+      "mac-tool",
+      "launchd",
+      "swiftui",
+      "automation"
+    ],
+    "color": "linear-gradient(135deg, #111827, #6b7280)",
+    "summary": "A menu-bar command center for everything running in the background on your Mac: LaunchAgents, cron, your own scripts, with run history and one-click repairs.",
+    "story": "Backstage lists every background job, explains what it does, spots crash loops and missing scripts, and runs your scripts with live output and history.",
+    "path": "backstage/",
+    "isNew": true
+  },
+  {
+    "id": "git-privacy",
+    "name": "git-privacy",
+    "slug": "git-privacy",
+    "icon": "🔏",
+    "category": "mac-tool",
+    "tags": [
+      "mac-tool",
+      "git",
+      "privacy",
+      "icloud"
+    ],
+    "color": "linear-gradient(135deg, #1e293b, #22c55e)",
+    "summary": "Keep code on GitHub and personal notes on your Macs: anything git ignores stays in your iCloud-synced folders and is blocked from ever being pushed.",
+    "story": "If your repos live in iCloud Drive, private notes, contact lists and AI instructions sit right next to public code. git-privacy makes one rule enforceable on every Mac: ignored means private. A pre-push guard blocks leaks, scrub removes private files from not-yet-pushed commits, and audit finds corrupted repositories before they bite.",
+    "path": "git-privacy/",
+    "isNew": true
+  },
+  {
+    "id": "secrets-sweep",
+    "name": "Secrets Sweep",
+    "slug": "secrets-sweep",
+    "icon": "🔐",
+    "category": "mac-tool",
+    "tags": [
+      "mac-tool",
+      "security",
+      "secrets"
+    ],
+    "color": "linear-gradient(135deg, #7f1d1d, #f59e0b)",
+    "summary": "Audits a folder tree for API keys, tokens and credential files that drifted out of your vault, and can move them in.",
+    "story": "Keys end up in .env files, notes and old scripts. This finds them and moves them to one private vault with symlinks so nothing breaks.",
+    "path": "secrets-sweep/secrets-sweep.sh",
+    "isNew": true
+  },
+  {
+    "id": "sunlight",
+    "name": "Sunlight",
+    "slug": "sunlight",
+    "icon": "☀️",
+    "category": "mac-tool",
+    "tags": [
+      "mac-tool",
+      "smart-home",
+      "swiftui",
+      "tasmota"
+    ],
+    "color": "linear-gradient(135deg, #f59e0b, #fde68a)",
+    "summary": "Native Mac controls for a Tasmota smart bulb: moods, slow color compositions, warm start-up and on-device daylight automation. Your bulb's details stay in a private local file.",
+    "story": "Smart-bulb apps want accounts and clouds. Sunlight talks straight to a Tasmota bulb on your Wi-Fi: twelve moods, slow compositions, a warm Edison start-up, and a daylight program that runs on the bulb itself, even with the Mac asleep.",
+    "path": "sunlight/",
+    "isNew": true
+  },
+  {
+    "id": "gmail-attachment-wingman-extension",
+    "name": "Gmail Attachment Wingman",
+    "slug": "gmail-attachment-wingman-extension",
+    "icon": "📎",
+    "category": "productivity",
+    "tags": [
+      "chrome-extension",
+      "gmail"
+    ],
+    "color": "linear-gradient(135deg,#dc2626,#fbbf24)",
+    "summary": "Grabs attachments out of Gmail in bulk so you're not saving them one click at a time.",
+    "story": "",
+    "path": "gmail-attachment-wingman-extension/"
+  },
+  {
+    "id": "google-voice-exporter-extension",
+    "name": "Google Voice Exporter",
+    "slug": "google-voice-exporter-extension",
+    "icon": "☎️",
+    "category": "contacts",
+    "tags": [
+      "mac-tool",
+      "chrome",
+      "contacts",
+      "export"
+    ],
+    "color": "linear-gradient(135deg, #ff6fae, #ff9f43)",
+    "summary": "Exports the open Google Voice thread as JSON, CSV, or TXT with attachment URLs and logs.",
+    "story": "The phone is still where half of real life happens: founders, contractors, school, family, buildings, quick deals. This makes those threads portable before they disappear behind somebody else's interface.",
+    "path": "google-voice-exporter-extension/"
+  },
+  {
+    "id": "meet-tab-sidecar-extension",
+    "name": "Meet Tab Sidecar",
+    "slug": "meet-tab-sidecar-extension",
+    "icon": "M",
+    "category": "productivity",
+    "tags": [
+      "mac-tool",
+      "chrome",
+      "meet",
+      "audio",
+      "presentation"
+    ],
+    "color": "linear-gradient(135deg, #2dd4bf, #2563eb)",
+    "summary": "Chrome extension for joining a Meet while a sidecar tab handles audio, intros, or presentation work.",
+    "story": "Meetings should produce a useful artifact, not just another happening. This lets another tab do the repeatable work while I stay focused on the conversation.",
+    "path": "downloads/meet-tab-sidecar-extension.zip"
+  },
+  {
+    "id": "imessage-cleanup",
+    "name": "iMessage Cleanup",
+    "slug": "imessage-cleanup",
+    "icon": "💬",
+    "category": "storage",
+    "tags": [
+      "mac-tool",
+      "storage",
+      "icloud",
+      "sqlite",
+      "contacts"
+    ],
+    "color": "linear-gradient(135deg, #1f6feb, #7c3aed)",
+    "summary": "Interactive exporter and iCloud storage cleaner: exports per-person archives (database, transcript, media) and frees space by removing local attachment copies.",
+    "story": "Old conversations are decisions, context, favors, family and receipts. Export the people who matter into durable per-person archives, then reclaim the gigabytes Messages hoards. For the nightly all-conversations archive, pair it with iMessage Sync.",
+    "path": "imessage-cleanup/run.sh",
+    "repoUrl": "https://github.com/amolsarva/imessage-cleanup"
+  },
+  {
+    "id": "bigfiles",
+    "name": "Bigfiles",
+    "slug": "bigfiles",
+    "icon": "📦",
+    "category": "storage",
+    "tags": [
+      "mac-tool",
+      "disk",
+      "audit",
+      "archive"
+    ],
+    "color": "linear-gradient(135deg, #f0c45b, #ff705d)",
+    "summary": "Finds heavy folders and checks recent activity before I decide what to archive.",
+    "story": "A Mac accumulates the sediment of every company, course, podcast, trip, and project. Bigfiles is the map before the excavation.",
+    "path": "bigfiles/bigfiles.sh"
+  },
+  {
+    "id": "cleanicloud",
+    "name": "Clean iCloud",
+    "slug": "cleanicloud",
+    "icon": "☁️",
+    "category": "storage",
+    "tags": [
+      "mac-tool",
+      "icloud",
+      "duplicates",
+      "large-files"
+    ],
+    "color": "linear-gradient(135deg, #55d6c2, #2f80ed)",
+    "summary": "Finds iCloud duplicates and suspiciously large clusters, then asks before removing anything.",
+    "story": "The cloud is useful until it becomes a rent-seeking attic. This is for the recurring moment when I want the machine to show me the mess plainly before I clean it.",
+    "path": "cleanicloud/cleanicloud.sh"
+  },
+  {
+    "id": "drive-dedup",
+    "name": "Drive Dedup",
+    "slug": "drive-dedup",
+    "icon": "💿",
+    "category": "storage",
+    "tags": [
+      "mac-tool",
+      "external-drive",
+      "duplicates",
+      "python"
+    ],
+    "color": "linear-gradient(135deg, #b993ff, #62a8ff)",
+    "summary": "Scans external drives for duplicates and plans a clean consolidation with checkpoints.",
+    "story": "Old drives are archaeological sites. The goal is not just delete duplicates; it is recover the useful record without losing the weird valuable thing.",
+    "path": "drive-dedup/"
+  },
+  {
+    "id": "screenshot-tidy",
+    "name": "Screenshot Tidy",
+    "slug": "screenshot-tidy",
+    "icon": "📸",
+    "category": "productivity",
+    "tags": [
+      "mac-tool",
+      "desktop",
+      "launchagent",
+      "screenshots"
+    ],
+    "color": "linear-gradient(135deg, #62a8ff, #55d6c2)",
+    "summary": "Moves screenshots off the Desktop into a real Screenshots folder and keeps the habit alive.",
+    "story": "Screenshots are field notes from the day: a chart, a bug, a building, a founder deck. They should be findable, not sprinkled across the Desktop like confetti.",
+    "path": "screenshot-tidy/"
+  },
+  {
+    "id": "abbu-to-csv",
+    "name": "ABBU to CSV",
+    "slug": "abbu-to-csv",
+    "icon": "📇",
+    "category": "contacts",
+    "tags": [
+      "mac-tool",
+      "contacts",
+      "csv",
+      "backup"
+    ],
+    "color": "linear-gradient(135deg, #44d17d, #62a8ff)",
+    "summary": "Turns an Apple Contacts .abbu backup into a readable CSV by finding the real database inside.",
+    "story": "The network is the work: founders, students, investors, neighbors, builders. Contacts should be inspectable data, not a sealed Apple bundle.",
+    "path": "abbu-to-csv/abbu_to_csv.sh"
+  },
+  {
+    "id": "personalcontacts-analyzer",
+    "name": "Contacts Analyzer",
+    "slug": "personalcontacts-analyzer",
+    "icon": "📊",
+    "category": "contacts",
+    "tags": [
+      "mac-tool",
+      "gmail",
+      "sqlite",
+      "analysis"
+    ],
+    "color": "linear-gradient(135deg, #f0c45b, #44d17d)",
+    "summary": "Archives Gmail headers locally and builds relationship and activity reports without message bodies.",
+    "story": "I like systems that reveal patterns without making a privacy bonfire. This shows the shape of a network while leaving the actual correspondence alone.",
+    "path": "personalcontacts-analyzer/"
+  },
+  {
+    "id": "pdf-to-xls",
+    "name": "PDF to XLS",
+    "slug": "pdf-to-xls",
+    "icon": "📄",
+    "category": "productivity",
+    "tags": [
+      "mac-tool",
+      "pdf",
+      "excel",
+      "conversion"
+    ],
+    "color": "linear-gradient(135deg, #ff9f43, #62a8ff)",
+    "summary": "Extracts PDF text with poppler and writes a quick Excel workbook for rough table recovery.",
+    "story": "Somebody always sends the numbers as a PDF. This is the little bridge from inert document to spreadsheet-shaped thing I can sort, inspect, and use.",
+    "path": "pdf-to-xls/pdftoxls.sh"
+  },
+  {
+    "id": "whatsapp-campaigns",
+    "name": "WhatsApp Campaign Studio",
+    "slug": "whatsapp-campaigns",
+    "icon": "🟢",
+    "category": "productivity",
+    "tags": [
+      "mac-tool",
+      "whatsapp",
+      "outreach",
+      "node"
+    ],
+    "color": "linear-gradient(135deg, #16a34a, #86efac)",
+    "summary": "The same careful, one-by-one outreach for WhatsApp: search history, review context, simulate or send, and bump people who didn't reply.",
+    "story": "",
+    "path": "whatsapp-campaigns/"
+  },
+  {
+    "id": "cpu-guard",
+    "name": "CPU Guard",
+    "slug": "cpu-guard",
+    "icon": "🔥",
+    "category": "monitoring",
+    "tags": [
+      "mac-tool",
+      "cpu",
+      "watchdog",
+      "python"
+    ],
+    "color": "linear-gradient(135deg, #ff705d, #b993ff)",
+    "summary": "Stops known noisy macOS background processes after sustained high CPU, with quiet action-only notifications.",
+    "story": "My computer should spend cycles on writing, calls, code, and research, not an invisible daemon melting the fan. This is a small guardrail for flow.",
+    "path": "cpu-guard/cpu_guard.py"
+  },
+  {
+    "id": "github-autopush",
+    "name": "GitHub Autopush",
+    "slug": "github-autopush",
+    "icon": "↻",
+    "category": "productivity",
+    "tags": [
+      "mac-tool",
+      "git",
+      "launchagent",
+      "sync"
+    ],
+    "color": "linear-gradient(135deg, #44d17d, #1f9a6a)",
+    "summary": "Keeps local repos moving to GitHub with readable commits and a background LaunchAgent.",
+    "story": "Ship While You Sleep, but for the pile of local experiments. I make a lot of small things; this keeps the good ones from living only on one laptop.",
+    "path": "github-autopush/"
+  },
+  {
+    "id": "mac-migrator",
+    "name": "Mac Migrator",
+    "slug": "mac-migrator",
+    "icon": "🖥️",
+    "category": "migration",
+    "tags": [
+      "mac-tool",
+      "migration",
+      "launchagents",
+      "dotfiles"
+    ],
+    "color": "linear-gradient(135deg, #cbd5e1, #64748b)",
+    "summary": "Bundles LaunchAgents, shell config, automation folders, brew lists, diagnostics, and restore steps.",
+    "story": "I have rebuilt the same working environment across too many machines. This turns a Mac migration from oral tradition into an actual written system.",
+    "path": "mac-migrator/mac_background_migrator.sh"
+  },
+  {
+    "id": "mac-scripts-launcher",
+    "name": "Mac Scripts Launcher",
+    "slug": "mac-scripts-launcher",
+    "icon": "🚀",
+    "category": "mac-tool",
+    "tags": [
+      "mac-tool",
+      "launcher"
+    ],
+    "color": "linear-gradient(135deg,#0f766e,#5eead4)",
+    "summary": "A native-feeling little app to browse and launch everything in this collection from one window.",
+    "story": "",
+    "path": "mac-scripts-launcher/"
+  }
+];
+    const categories = [["all", "All"], ["ai", "AI"], ["web", "Web"], ["evidence", "Evidence"], ["mac-tool", "Mac Tools"], ["productivity", "Productivity"], ["storage", "Storage"], ["contacts", "Contacts"], ["migration", "Migration"]];
+    // catalog:end
+
+    const repo = "https://github.com/amolsarva/amols-app-store";
+    let activeCategory = "all";
+
+    const filters = document.getElementById("filters");
+    const appsNode = document.getElementById("apps");
+    const featuredNode = document.getElementById("featured");
+    const search = document.getElementById("search");
+    const empty = document.getElementById("empty");
+    const count = document.getElementById("result-count");
+
+    function readmeUrl(app) {
+      if (app.repoUrl) return app.repoUrl;
+      return `${repo}/tree/main/${app.slug}`;
+    }
+
+    function getUrl(app) {
+      if (app.liveUrl) return app.liveUrl;
+      if (app.repoUrl) return app.repoUrl;
+      if (app.path.startsWith("downloads/")) return app.path;
+      if (app.path.endsWith("/")) return `${repo}/tree/main/${app.slug}`;
+      return `https://raw.githubusercontent.com/amolsarva/amols-app-store/main/${app.path}`;
+    }
+
+    document.getElementById("stat-apps").textContent = apps.length;
+    document.getElementById("stat-featured").textContent = apps.filter(app => app.featured).length;
+
+    function renderFilters() {
+      filters.innerHTML = categories.map(([id, label]) => (
+        `<button class="filter ${id === activeCategory ? "active" : ""}" data-filter="${id}">${label}</button>`
+      )).join("");
+    }
+
+    function renderFeatured() {
+      featuredNode.innerHTML = apps.filter(app => app.featured).map(app => `
+        <article class="feature" style="--tone:${app.color}" data-icon="${app.icon}">
+          <h3>${app.name}</h3>
+          <p>${app.story || app.summary}</p>
+          <a href="${readmeUrl(app)}" target="_blank" rel="noopener">Open</a>
+        </article>
+      `).join("");
+    }
+
+    function appMatches(app, query) {
+      const haystack = [app.name, app.slug, app.category, app.summary, app.story || "", ...app.tags].join(" ").toLowerCase();
+      const categoryOk = activeCategory === "all" || app.category === activeCategory || app.tags.includes(activeCategory);
+      return categoryOk && haystack.includes(query);
+    }
+
+    function renderApps() {
+      const query = search.value.trim().toLowerCase();
+      const visible = apps.filter(app => appMatches(app, query));
+      count.textContent = `${visible.length} ${visible.length === 1 ? "app" : "apps"} available`;
+      empty.style.display = visible.length ? "none" : "block";
+      appsNode.innerHTML = visible.map(app => `
+        <article class="app-card" data-category="${app.category}">
+          <div class="app-top">
+            <div class="icon" style="--icon-bg:${app.color}">${app.icon}</div>
+            <div class="app-title">
+              <h3>${app.name}${app.isNew ? ' <span class="new-badge">New</span>' : ""}</h3>
+              <span>${app.slug}</span>
+            </div>
+          </div>
+          <p class="summary">${app.summary}</p>
+          <p class="story">${app.story}</p>
+          <div class="chips">${app.tags.map(tag => `<span class="chip">${tag}</span>`).join("")}</div>
+          <div class="card-actions">
+            <a class="mini-btn get" href="${getUrl(app)}">${app.getLabel || "Get"}</a>
+            <a class="mini-btn" href="${readmeUrl(app)}" target="_blank" rel="noopener">Details</a>
+          </div>
+        </article>
+      `).join("");
+    }
+
+    filters.addEventListener("click", event => {
+      const button = event.target.closest("button[data-filter]");
+      if (!button) return;
+      activeCategory = button.dataset.filter;
+      renderFilters();
+      renderApps();
+    });
+
+    search.addEventListener("input", renderApps);
+
+    renderFilters();
+    renderFeatured();
+    renderApps();
+  </script>
+</body>
+</html>

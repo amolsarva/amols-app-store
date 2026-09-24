@@ -1,0 +1,226 @@
+{
+  "abbu-to-csv": {
+    "entry": "abbu_to_csv.sh",
+    "icon": "📇",
+    "short": "Export Apple Contacts to CSV",
+    "long": "Converts the .abbu backup that Apple Contacts creates into a plain CSV spreadsheet — readable in Excel, importable anywhere, and not locked inside Apple's format.",
+    "status": "public"
+  },
+  "backstage": {
+    "entry": "build.sh",
+    "icon": "🎛️",
+    "short": "Background jobs + scripts command center",
+    "long": "Lists launchd jobs, cron and your scripts; runs scripts with live output and history; diagnoses and repairs broken LaunchAgents.",
+    "status": "public"
+  },
+  "bigfiles": {
+    "entry": "bigfiles.sh",
+    "icon": "📦",
+    "short": "Find disk hogs",
+    "long": "Scans your Mac and lists the largest folders and files by size, so you can see where the disk space actually went — old simulators, unused VMs, forgotten videos.",
+    "status": "public"
+  },
+  "cleanicloud": {
+    "entry": "cleanicloud.sh",
+    "icon": "☁️",
+    "short": "Clean up iCloud Drive",
+    "long": "Finds duplicate and large files in your iCloud Drive and walks you through deleting them interactively — useful when iCloud is full and Manage Storage isn't telling the whole story.",
+    "status": "public"
+  },
+  "cpu-guard": {
+    "entry": "cpu-guard-install.sh",
+    "icon": "🔥",
+    "short": "Stop runaway background processes",
+    "long": "Installs a background watcher that throttles macOS background processes when they stay hot too long, using quiet action-only notifications instead of repeated alerts.",
+    "status": "public"
+  },
+  "drive-dedup": {
+    "entry": "run.sh",
+    "icon": "💿",
+    "short": "Deduplicate an external drive",
+    "long": "Scans an external drive for duplicates and consolidates everything into a clean folder structure. Runs in two phases: first it maps what's there, then it moves things around.",
+    "status": "public"
+  },
+  "eastofeast-faq": {
+    "entry": "",
+    "icon": "🏢",
+    "short": "FAQ content for a building website.",
+    "long": "FAQ content for a building website.",
+    "status": "private"
+  },
+  "git-privacy": {
+    "entry": "run.sh",
+    "icon": "🔏",
+    "short": "Keep private files off GitHub",
+    "long": "audit: every repo's private files, unpushed leaks and corruption · install: guard this Mac · scrub <repo> --apply: remove private files from unpushed commits.",
+    "status": "public"
+  },
+  "github-autopush": {
+    "entry": "github-autopush-manager.sh",
+    "icon": "↻",
+    "short": "Auto-push git repos to GitHub",
+    "long": "Installs a background LaunchAgent that automatically commits and pushes your git repos to GitHub on a schedule. Set it up once and your projects stay synced without you remembering to push.",
+    "status": "public"
+  },
+  "gmail-attachment-wingman-extension": {
+    "entry": "",
+    "icon": "📎",
+    "short": "Grabs attachments out of Gmail in bulk so you're not saving ",
+    "long": "Grabs attachments out of Gmail in bulk so you're not saving them one click at a time.",
+    "status": "public"
+  },
+  "google-voice-exporter-extension": {
+    "entry": "run.sh",
+    "icon": "☎️",
+    "short": "Exports the open Google Voice thread as JSON, CSV, or TXT wi",
+    "long": "Exports the open Google Voice thread as JSON, CSV, or TXT with attachment URLs and logs.",
+    "status": "public"
+  },
+  "imessage-campaigns": {
+    "entry": "run.sh",
+    "icon": "📣",
+    "short": "Send birthday invites via Messages",
+    "long": "Sends (and follows up on) birthday invites through Messages.app, with a dry-run mode to preview before anything goes out. Keeps its own sent-log in this folder.",
+    "status": "public"
+  },
+  "imessage-sync": {
+    "entry": "run.sh",
+    "icon": "🌙",
+    "short": "Nightly archive of every conversation, for people and AIs",
+    "long": "Every night: all conversations to Markdown + a searchable SQLite db, attachments sorted by type (photos/videos/PDFs/audio) and shrunk. Self-healing schedule, dashboard, doctor, per-person pipelines.",
+    "status": "public"
+  },
+  "mac-migrator": {
+    "entry": "mac_background_migrator.sh",
+    "icon": "🖥️",
+    "short": "Pack up your Mac for migration",
+    "long": "Bundles your Mac's configuration — shell settings, LaunchAgents, background tasks, dotfiles — into a portable archive you can restore on a new machine. Saves hours of reconfiguring from scratch.",
+    "status": "public"
+  },
+  "mac-scripts-launcher": {
+    "entry": "launcher.py",
+    "icon": "🚀",
+    "short": "A native-feeling little app to browse and launch everything ",
+    "long": "A native-feeling little app to browse and launch everything in this collection from one window.",
+    "status": "public"
+  },
+  "meet-tab-sidecar-extension": {
+    "entry": "run.sh",
+    "icon": "M",
+    "short": "Chrome extension for joining a Meet while a sidecar tab hand",
+    "long": "Chrome extension for joining a Meet while a sidecar tab handles audio, intros, or presentation work.",
+    "status": "public"
+  },
+  "openclaw-chatlog-tap": {
+    "entry": "repair-chatlog-tap.sh",
+    "icon": "🩹",
+    "short": "Repair OpenClaw chatlog tap",
+    "long": "Reinstalls a working chatlog tap and reloads its LaunchAgent.",
+    "status": "private"
+  },
+  "pdf-to-xls": {
+    "entry": "pdftoxls.sh",
+    "icon": "📄",
+    "short": "Convert PDF tables to Excel",
+    "long": "Pulls tabular data out of a PDF and writes it to a spreadsheet — handy for statements, reports, and invoices that only come as PDFs.",
+    "status": "public"
+  },
+  "personalcontacts-analyzer": {
+    "entry": "pca.py",
+    "icon": "📊",
+    "short": "Analyze your contacts & relationships",
+    "long": "Reads your Contacts database and produces stats about your network — who you have info on, gaps in your address book, duplicates, and missing emails or phone numbers.",
+    "status": "public"
+  },
+  "rescue-hq": {
+    "entry": "rescue.sh",
+    "icon": "🛟",
+    "short": "Google Photos Space Rescue HQ",
+    "long": "Everything for a Google Takeout photo rescue in one place. Checks and installs dependencies, merges a multi-part zip set, sorts the result into PHOTOS/ (one flat folder to drag-upload) and VIDEOS/<year>/ (flat, for stitching), and repairs common Takeout damage — Live Photo motion clips, duplicates, screenshots, JSON sidecars, and files whose extension lies about their contents. Dry-runs every stage and deletes nothing.",
+    "status": "public"
+  },
+  "screenshot-tidy": {
+    "entry": "screenshot-tidy-install.sh",
+    "icon": "📸",
+    "short": "Auto-organize screenshots",
+    "long": "Installs a background watcher that moves new Desktop screenshots into dated folders automatically, so they never pile up on your Desktop.",
+    "status": "public"
+  },
+  "secrets-sweep": {
+    "entry": "secrets-sweep.sh",
+    "icon": "🔐",
+    "short": "Find keys and secrets outside the vault",
+    "long": "Audits a folder tree for keys and credential files; --fix moves them into the vault and leaves symlinks.",
+    "status": "public"
+  },
+  "sunlight": {
+    "entry": "run.sh",
+    "icon": "☀️",
+    "short": "Native Sengled light controls",
+    "long": "Sunlight: power, brightness, colors, dedicated white, warm startup and on-device daylight automation, with private recovery backups.",
+    "status": "public"
+  },
+  "voice-memo-renamer": {
+    "entry": "",
+    "icon": "🎤",
+    "short": "Rename Voice Memos from a plan",
+    "long": "Builds a rename plan for Voice Memos, applies it, and keeps rollback CSVs.",
+    "status": "private"
+  },
+  "voicememocleaner": {
+    "entry": "VOICEMEMOCLEANER.sh",
+    "icon": "🎙️",
+    "short": "Export & compress Voice Memos",
+    "long": "Exports every Voice Memo — full-quality original plus a smaller compressed copy — into one folder, along with title, date, duration, and GPS location metadata where available. Read-only against Voice Memos itself; nothing in the app is touched. Reruns are incremental, so refreshing after new recordings is fast.",
+    "status": "public"
+  },
+  "whatsapp-campaigns": {
+    "entry": "run.sh",
+    "icon": "🟢",
+    "short": "Search and message WhatsApp contacts",
+    "long": "Finds private chats where a phrase appeared, lets you review each person and matching context, then simulates or sends a separate message to each. Archives campaigns, checks replies, and prepares bumps for people who did not respond. Dry-run is always the default.",
+    "status": "public"
+  },
+  "opensore": {
+    "entry": "run.sh",
+    "icon": "🕵️",
+    "short": "AI-assisted workplace evidence investigation for lawyers, HR",
+    "long": "AI-assisted workplace evidence investigation for lawyers, HR, boards, and compliance teams.",
+    "status": "public"
+  },
+  "opensnore": {
+    "entry": "run.sh",
+    "icon": "💤",
+    "short": "A browser app, PWA, and Mac-app experiment with fake snores ",
+    "long": "A browser app, PWA, and Mac-app experiment with fake snores for boring moments and guided exercises for quieter nights.",
+    "status": "public"
+  },
+  "imessage-cleanup": {
+    "entry": "imessage_cleanup.sh",
+    "icon": "💬",
+    "short": "Export per-person archives & free iCloud space",
+    "long": "Interactive exporter and iCloud storage cleaner: exports per-person archives (database, transcript, media) and frees space by removing local attachment copies.",
+    "status": "public"
+  },
+  "repo2audiobook": {
+    "entry": "setup.sh",
+    "icon": "🎧",
+    "short": "Turn a GitHub repo into a narrated audiobook",
+    "long": "Converts a GitHub repository into a narrated audiobook/podcast using OpenAI TTS, with modes like investor diligence, technical deep-dive, and beginner. Run setup once to install dependencies, then run repo2audiobook.py with a repo URL.",
+    "status": "private"
+  },
+  "screenshot-mover": {
+    "entry": "run.sh",
+    "icon": "🧰",
+    "short": "",
+    "long": "",
+    "status": "review"
+  },
+  "codex-openclaw-simulator": {
+    "entry": "run.sh",
+    "icon": "🌉",
+    "short": "Duplicate of ~/Documents/root/message-bridge (identical src/",
+    "long": "Duplicate of ~/Documents/root/message-bridge (identical src/). Kept on disk, never published.",
+    "status": "private"
+  }
+}

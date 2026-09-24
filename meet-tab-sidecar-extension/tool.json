@@ -1,0 +1,26 @@
+{
+  "name": "Meet Tab Sidecar",
+  "icon": "M",
+  "section": "Chrome extensions",
+  "kind": "chrome-extension",
+  "status": "public",
+  "featured": false,
+  "category": "productivity",
+  "tags": [
+    "mac-tool",
+    "chrome",
+    "meet",
+    "audio",
+    "presentation"
+  ],
+  "color": "linear-gradient(135deg, #2dd4bf, #2563eb)",
+  "summary": "Chrome extension for joining a Meet while a sidecar tab handles audio, intros, or presentation work.",
+  "story": "Meetings should produce a useful artifact, not just another happening. This lets another tab do the repeatable work while I stay focused on the conversation.",
+  "launcher": {
+    "entry": "run.sh",
+    "short": "Chrome extension for joining a Meet while a sidecar tab hand",
+    "long": "Chrome extension for joining a Meet while a sidecar tab handles audio, intros, or presentation work."
+  },
+  "store_path": "downloads/meet-tab-sidecar-extension.zip",
+  "added": "2026-05-01"
+}

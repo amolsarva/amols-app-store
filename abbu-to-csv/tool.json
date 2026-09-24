@@ -1,0 +1,25 @@
+{
+  "name": "ABBU to CSV",
+  "icon": "📇",
+  "section": "Contacts & data",
+  "kind": "mac-script",
+  "status": "public",
+  "featured": false,
+  "category": "contacts",
+  "tags": [
+    "mac-tool",
+    "contacts",
+    "csv",
+    "backup"
+  ],
+  "color": "linear-gradient(135deg, #44d17d, #62a8ff)",
+  "summary": "Turns an Apple Contacts .abbu backup into a readable CSV by finding the real database inside.",
+  "story": "The network is the work: founders, students, investors, neighbors, builders. Contacts should be inspectable data, not a sealed Apple bundle.",
+  "launcher": {
+    "entry": "abbu_to_csv.sh",
+    "short": "Export Apple Contacts to CSV",
+    "long": "Converts the .abbu backup that Apple Contacts creates into a plain CSV spreadsheet — readable in Excel, importable anywhere, and not locked inside Apple's format."
+  },
+  "store_path": "abbu-to-csv/abbu_to_csv.sh",
+  "added": "2026-05-01"
+}

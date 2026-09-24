@@ -110,8 +110,8 @@
 #    - Alias-group matching used a naive "last 10 digits" key, which is
 #      correct for US numbers but silently breaks for numbers where the
 #      country code and trunk-prefix lengths don't line up (e.g. Belgium:
-#      "+32472817175" -> last10 "2472817175", but the same number typed
-#      nationally as "0472817175" -> last10 "0472817175" — different keys,
+#      "+32470123456" -> last10 "2470123456", but the same number typed
+#      nationally as "0470123456" -> last10 "0470123456" — different keys,
 #      same phone). This caused real gaps: messages logged under whichever
 #      format didn't match the registered handle never merged into that
 #      person's archive (found via a report showing zero incoming messages
@@ -661,8 +661,8 @@ normalize_phone() {
 # A single "last 10 digits" key works for US numbers (country code 1 = 1
 # digit, same length as a leading trunk 0) but silently breaks for numbers
 # where the country code and trunk-prefix lengths don't line up — e.g.
-# Belgium (+32, 2 digits) vs a locally-typed "0472817175" (1-digit trunk):
-# +32472817175 -> last10 "2472817175", but 0472817175 -> last10 "0472817175".
+# Belgium (+32, 2 digits) vs a locally-typed "0470123456" (1-digit trunk):
+# +32470123456 -> last10 "2470123456", but 0470123456 -> last10 "0470123456".
 # Same real number, two different keys, so messages logged under whichever
 # format didn't match silently never merge into the person's archive. This
 # emits every plausible candidate key (last-10 and last-9, with/without a
@@ -1838,7 +1838,7 @@ ensure_archive_state() {
       "slug": "laura_bogaert",
       "handles": [
         "laura.bogaert@telenet.be",
-        "+32472817175",
+        "+32470123456",
         "+447397821812"
       ],
       "notes": "Seeded because this person appears in Messages under three handles."
@@ -2357,8 +2357,8 @@ for key, person in (data.get("people") or {}).items():
         else:
             # Mirror phone_norm_variants() in bash: last-10 and last-9,
             # with/without a leading trunk 0 stripped. Needed because e.g.
-            # Belgian numbers normalize differently as "+32472817175" vs a
-            # locally-typed "0472817175" under a naive last-10-digits rule
+            # Belgian numbers normalize differently as "+32470123456" vs a
+            # locally-typed "0470123456" under a naive last-10-digits rule
             # (country code and trunk-prefix lengths don't line up), so a
             # single fixed key silently misses half of the same person's
             # messages.
