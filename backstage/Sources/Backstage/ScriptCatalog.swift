@@ -41,6 +41,14 @@ struct ScriptEntry: Codable, Hashable {
     var defaultArguments: String = ""
     var favorite: Bool = false
     var tracked: Bool = true
+    /// Arguments for the three top-level actions. nil = this tool has no such action; "" = run with no arguments.
+    var launchArgs: String? = nil
+    var installArgs: String? = nil
+    var repairArgs: String? = nil
+    /// Optional .app to open for Launch (falls back to running the script).
+    var launchApp: String? = nil
+
+    var hasModes: Bool { launchArgs != nil || installArgs != nil || repairArgs != nil || launchApp != nil }
 }
 
 struct RunRecord: Codable, Hashable, Identifiable {

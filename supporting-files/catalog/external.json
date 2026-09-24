@@ -129,28 +129,31 @@
     "review_note": "Mac-only (232 MB incl. output); give it its own repo to publish"
   },
   {
-    "name": "screenshot-mover",
-    "icon": "🧰",
+    "name": "Screenshot Mover",
+    "icon": "📸",
     "section": "Storage & cleanup",
-    "kind": "local-only",
-    "status": "review",
+    "kind": "external-repo",
+    "status": "public",
     "featured": false,
-    "category": "mac-tool",
+    "category": "productivity",
     "tags": [
-      "mac-tool"
+      "mac-tool",
+      "screenshots",
+      "clipboard",
+      "icloud"
     ],
-    "color": "linear-gradient(135deg, #334155, #64748b)",
-    "summary": "",
-    "story": "",
+    "color": "linear-gradient(135deg, #FF8A5B, #C2410C)",
+    "summary": "Every screenshot is on your clipboard the instant you take it, and filed into iCloud › Desktop › Screenshots for later review.",
+    "story": "macOS makes you choose between saving a screenshot and copying it. This tiny agent does both with the normal shortcuts: paste immediately, find the file later, and your Desktop stays empty.",
     "launcher": {
-      "entry": "run.sh",
-      "short": "",
-      "long": ""
+      "entry": "install.sh",
+      "short": "Screenshots to clipboard instantly, filed to iCloud",
+      "long": "Every screenshot is on your clipboard the instant you take it, and filed into iCloud › Desktop › Screenshots for later review."
     },
-    "store_path": "screenshot-mover/",
+    "store_path": "screenshot-mover/install.sh",
     "added": "2026-05-01",
     "folder": "screenshot-mover",
-    "review_note": "approved to publish as its own repo: create an empty github.com/amolsarva/screenshot-mover, repair its history (see git-privacy notes), push, then set repoUrl and status public"
+    "repoUrl": "https://github.com/amolsarva/screenshot-mover"
   },
   {
     "folder": "codex-openclaw-simulator",

@@ -19,6 +19,12 @@ final class JobStore: ObservableObject {
     @Published var discovering = false
     @Published var searchRoots: [String] = ScriptFinder.defaultRoots
 
+    // New-Mac setup checklist
+    @Published var setupItems: [SetupItem] = []
+    @Published var setupStatus: [String: SetupStatus] = [:]
+    @Published var setupOutput: String = ""
+    @Published var setupBusy: String? = nil
+
     /// Data files live next to the source (iCloud-synced, editable by AIs), not in app container storage.
     static let dataDirectory = Scanner.documents + "/root/mac-scripts/backstage"
     static var notesPath: String { dataDirectory + "/job-notes.json" }
@@ -30,6 +36,7 @@ final class JobStore: ObservableObject {
     init() {
         loadNotes()
         loadScripts()
+        loadSetup()
         refresh()
         rebuildScripts()
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
@@ -77,12 +84,33 @@ final class JobStore: ObservableObject {
     func loadScripts() {
         if let data = FileManager.default.contents(atPath: Self.scriptsPath),
            let decoded = try? JSONDecoder().decode([String: ScriptEntry].self, from: data) {
-            scriptEntries = decoded
+            var merged: [String: ScriptEntry] = [:]
+            // Entries already using this Mac's home win over entries written on another Mac.
+            for (_, entry) in decoded.sorted(by: { !$0.key.hasPrefix(Scanner.home) && $1.key.hasPrefix(Scanner.home) }) {
+                var e = entry
+                e.path = PortablePath.expand(entry.path)
+                merged[e.path] = e
+            }
+            scriptEntries = merged
         }
-        if let data = FileManager.default.contents(atPath: Self.historyPath),
-           let decoded = try? JSONDecoder().decode([RunRecord].self, from: data) {
-            runHistory = decoded
+        if let data = FileManager.default.contents(atPath: Self.historyPath) {
+            let dec = JSONDecoder()
+            dec.dateDecodingStrategy = .iso8601
+            if let decoded = (try? dec.decode([RunRecord].self, from: data))
+                ?? (try? JSONDecoder().decode([RunRecord].self, from: data)) {
+                runHistory = decoded.map { r in var r = r; r.path = PortablePath.expand(r.path); return r }
+            }
         }
+    }
+
+    private func persistScripts() {
+        var out: [String: ScriptEntry] = [:]
+        for (_, e) in scriptEntries {
+            var e = e
+            e.path = PortablePath.portable(e.path)
+            out[e.path] = e
+        }
+        write(out, to: Self.scriptsPath)
     }
 
     var trackedScripts: [ScriptItem] {
@@ -136,13 +164,13 @@ final class JobStore: ObservableObject {
         var e = scriptEntries[item.path] ?? ScriptEntry(path: item.path, name: item.name, whatItDoes: item.autoSummary)
         e.tracked = on
         if on { scriptEntries[item.path] = e } else { scriptEntries.removeValue(forKey: item.path) }
-        write(scriptEntries, to: Self.scriptsPath)
+        persistScripts()
         rebuildScripts()
     }
 
     func saveScript(_ entry: ScriptEntry) {
         scriptEntries[entry.path] = entry
-        write(scriptEntries, to: Self.scriptsPath)
+        persistScripts()
         rebuildScripts()
     }
 
@@ -152,7 +180,7 @@ final class JobStore: ObservableObject {
         var byPath: [String: [RunRecord]] = [:]
         for r in runHistory { byPath[r.path, default: []].append(r) }
         runHistory = byPath.values.flatMap { $0.sorted { $0.started > $1.started }.prefix(40) }
-        write(runHistory, to: Self.historyPath)
+        write(runHistory.map { r in var r = r; r.path = PortablePath.portable(r.path); return r }, to: Self.historyPath)
         rebuildScripts()
     }
 

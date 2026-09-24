@@ -210,11 +210,11 @@
     "status": "private"
   },
   "screenshot-mover": {
-    "entry": "run.sh",
-    "icon": "🧰",
-    "short": "",
-    "long": "",
-    "status": "review"
+    "entry": "install.sh",
+    "icon": "📸",
+    "short": "Screenshots to clipboard instantly, filed to iCloud",
+    "long": "Every screenshot is on your clipboard the instant you take it, and filed into iCloud › Desktop › Screenshots for later review.",
+    "status": "public"
   },
   "codex-openclaw-simulator": {
     "entry": "run.sh",

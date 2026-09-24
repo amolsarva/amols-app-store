@@ -1,0 +1,110 @@
+[
+  {
+    "id": "xcode-clt", "group": "Basics", "name": "Command Line Tools",
+    "why": "Compiler and git. Needed to build Backstage and most tools.",
+    "check": { "type": "xcode-clt", "value": "" },
+    "fix": { "type": "terminal", "value": "xcode-select --install" }
+  },
+  {
+    "id": "homebrew", "group": "Basics", "name": "Homebrew",
+    "why": "Package manager that installs the helper tools below.",
+    "check": { "type": "command", "value": "brew" },
+    "fix": { "type": "terminal", "value": "/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"" }
+  },
+  {
+    "id": "node", "group": "Helper tools", "name": "Node.js",
+    "why": "message-bridge, voice-memo renamer, several site projects.",
+    "check": { "type": "command", "value": "node" },
+    "fix": { "type": "brew", "value": "node" }
+  },
+  {
+    "id": "ffmpeg", "group": "Helper tools", "name": "ffmpeg", "optional": true,
+    "why": "Video/audio resizing and transcription helpers.",
+    "check": { "type": "command", "value": "ffmpeg" },
+    "fix": { "type": "brew", "value": "ffmpeg" }
+  },
+  {
+    "id": "poppler", "group": "Helper tools", "name": "poppler (pdftotext)", "optional": true,
+    "why": "PDF text extraction for the PDF/financial tools.",
+    "check": { "type": "command", "value": "pdftotext" },
+    "fix": { "type": "brew", "value": "poppler" }
+  },
+  {
+    "id": "tesseract", "group": "Helper tools", "name": "tesseract (OCR)", "optional": true,
+    "why": "OCR for scanned documents.",
+    "check": { "type": "command", "value": "tesseract" },
+    "fix": { "type": "brew", "value": "tesseract" }
+  },
+  {
+    "id": "whisper", "group": "Helper tools", "name": "OpenAI Whisper", "optional": true,
+    "why": "Audio transcription (transcribe_audio.py).",
+    "check": { "type": "command", "value": "whisper" },
+    "fix": { "type": "brew", "value": "openai-whisper" }
+  },
+  {
+    "id": "imsg", "group": "Helper tools", "name": "imsg", "optional": true,
+    "why": "Command-line iMessage access.",
+    "check": { "type": "command", "value": "imsg" },
+    "fix": { "type": "brew", "value": "steipete/tap/imsg" }
+  },
+  {
+    "id": "openclaw", "group": "Helper tools", "name": "OpenClaw", "optional": true,
+    "why": "AI agent gateway. Only needed if you still use OpenClaw.",
+    "check": { "type": "command", "value": "openclaw" },
+    "fix": { "type": "note", "value": "Install OpenClaw the way you did originally, then run Scripts > Fix OpenClaw. Notes: ~/Documents/root/openclaw/AI-README.md" }
+  },
+  {
+    "id": "app-claude", "group": "Apps", "name": "Claude",
+    "why": "Claude desktop app (Code, Cowork, scheduled tasks).",
+    "check": { "type": "app", "value": "Claude" },
+    "fix": { "type": "url", "value": "https://claude.ai/download" }
+  },
+  {
+    "id": "app-chrome", "group": "Apps", "name": "Google Chrome",
+    "why": "Browser used by Claude in Chrome and Google Drive workflows.",
+    "check": { "type": "app", "value": "Google Chrome" },
+    "fix": { "type": "url", "value": "https://www.google.com/chrome/" }
+  },
+  {
+    "id": "app-drive", "group": "Apps", "name": "Google Drive", "optional": true,
+    "why": "Shared LifeX / Laura folders live in Drive.",
+    "check": { "type": "app", "value": "Google Drive" },
+    "fix": { "type": "url", "value": "https://www.google.com/drive/download/" }
+  },
+  {
+    "id": "app-bluebubbles", "group": "Apps", "name": "BlueBubbles Server", "optional": true,
+    "why": "Lets message-bridge send iMessages. Only on the Mac signed in to Messages.",
+    "check": { "type": "app", "value": "BlueBubbles" },
+    "fix": { "type": "url", "value": "https://bluebubbles.app" }
+  },
+  {
+    "id": "git-privacy", "group": "Background jobs & guards", "name": "Git privacy guards",
+    "why": "Global pre-commit / pre-push hooks that keep secrets off GitHub. Run once per Mac.",
+    "check": { "type": "path", "value": "~/.config/git/hooks/pre-commit" },
+    "fix": { "type": "script", "value": "mac-scripts/git-privacy/run.sh install" }
+  },
+  {
+    "id": "agent-cpu-guard", "group": "Background jobs & guards", "name": "CPU guard",
+    "why": "Watches noisy macOS daemons. Installer builds its own venv.",
+    "check": { "type": "agent", "value": "com.amol.cpu-guard" },
+    "fix": { "type": "script", "value": "mac-scripts/cpu-guard/cpu-guard-install.sh" }
+  },
+  {
+    "id": "agent-screenshot-mover", "group": "Background jobs & guards", "name": "Screenshot Mover",
+    "why": "Files every screenshot into iCloud and the clipboard.",
+    "check": { "type": "agent", "value": "com.amol.screenshot-mover" },
+    "fix": { "type": "script", "value": "mac-scripts/screenshot-mover/install.sh" }
+  },
+  {
+    "id": "agent-imessage-sync", "group": "Background jobs & guards", "name": "iMessage sync (nightly)",
+    "why": "Nightly archive of every conversation. Afterwards grant Full Disk Access to ~/Applications/iMessage Sync.app in System Settings.",
+    "check": { "type": "agent", "value": "com.amol.imessage-sync" },
+    "fix": { "type": "script", "value": "mac-scripts/imessage-sync/run.sh install" }
+  },
+  {
+    "id": "agent-chatlog-tap", "group": "Background jobs & guards", "name": "OpenClaw chatlog tap", "optional": true,
+    "why": "Mirrors OpenClaw session logs. Only if you use OpenClaw.",
+    "check": { "type": "agent", "value": "ai.openclaw.chatlog.tap" },
+    "fix": { "type": "script", "value": "mac-scripts/openclaw-chatlog-tap/repair-chatlog-tap.sh" }
+  }
+]

@@ -25,12 +25,14 @@ fi
 
 # 1. Helper app: rebuilt only when its source changes, because every rebuild gets a new
 #    code signature and macOS would silently drop the Full Disk Access grant.
-SRC_HASH="$(cat "$DIR/helper/main.swift" "$DIR/helper/AppIcon.icns" | shasum | cut -c1-12)"
+# PLIST_REV bumps force a rebuild when only the Info.plist below changes.
+PLIST_REV=3
+SRC_HASH="$( (cat "$DIR/helper/main.swift" "$DIR/helper/AppIcon.icns"; echo "$PLIST_REV") | shasum | cut -c1-12)"
 if [[ ! -x "$BIN" || "$(cat "$APP/Contents/Resources/source-hash" 2>/dev/null)" != "$SRC_HASH" ]]; then
   echo "==> Building $APP"
   BUILD="$HOME/Library/Caches/imessage-sync-build"
   mkdir -p "$BUILD" "$APP/Contents/MacOS" "$APP/Contents/Resources"
-  swiftc -O "$DIR/helper/main.swift" -o "$BUILD/iMessageSync"
+  swiftc -O -target "$(uname -m)-apple-macos13.0" "$DIR/helper/main.swift" -o "$BUILD/iMessageSync"
   cp "$BUILD/iMessageSync" "$BIN"
   cp "$DIR/helper/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
   cat > "$APP/Contents/Info.plist" <<PL
@@ -43,8 +45,10 @@ if [[ ! -x "$BIN" || "$(cat "$APP/Contents/Resources/source-hash" 2>/dev/null)" 
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>1.0</string>
+  <key>CFBundleVersion</key><string>1</string>
+  <key>LSMinimumSystemVersion</key><string>13.0</string>
+  <key>NSHighResolutionCapable</key><true/>
   <key>LSUIElement</key><true/>
-  <key>LSBackgroundOnly</key><true/>
 </dict></plist>
 PL
   echo "$SRC_HASH" > "$APP/Contents/Resources/source-hash"
@@ -101,6 +105,7 @@ cat <<MSG
 One manual step, only you can do it (macOS security):
   System Settings → Privacy & Security → Full Disk Access → + → choose
   $APP
+  (Easiest: run  $DIR/run.sh grant  — it opens that pane and shows the app in Finder to drag in.)
   (If it's already listed but this was a rebuild, remove it with − and add it again.)
 Then check everything with:   $DIR/run.sh doctor
 MSG

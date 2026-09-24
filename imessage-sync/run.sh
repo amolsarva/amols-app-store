@@ -67,8 +67,13 @@ case "${1:-now}" in
   retry-media)  exec "$PY" "$SYNC" retry-media ;;
   take-over)    exec "$PY" "$SYNC" take-over ;;
   open)         open "$ARCHIVE/_sync/status.html" ;;
+  grant)        open "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
+                open -R "$HOME/Applications/iMessage Sync.app"
+                echo "Opened Full Disk Access and revealed iMessage Sync.app."
+                echo "Drag the app from Finder into the list (or press + and pick it), then switch it ON."
+                echo "Then run: doctor" ;;
   install)      exec bash "$DIR/install.sh" ;;
   uninstall)    exec bash "$DIR/install.sh" --uninstall ;;
   here)         shift; exec "$PY" "$SYNC" run --force "$@" ;;       # run in this process (needs FDA here)
-  *)            echo "usage: run.sh [now [--media-budget MIN] | status | doctor | retry-media | open | take-over | install | uninstall | here]"; exit 64 ;;
+  *)            echo "usage: run.sh [now [--media-budget MIN] | status | doctor | retry-media | open | take-over | grant | install | uninstall | here]"; exit 64 ;;
 esac

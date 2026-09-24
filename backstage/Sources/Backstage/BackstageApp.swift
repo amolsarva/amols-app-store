@@ -5,6 +5,14 @@ struct BackstageApp: App {
     @StateObject private var store = JobStore()
 
     init() {
+        // `Backstage --setup` prints the new-Mac checklist (from setup.json) and exits.
+        if CommandLine.arguments.contains("--setup") {
+            let data = FileManager.default.contents(atPath: Scanner.documents + "/root/mac-scripts/backstage/setup.json") ?? Data()
+            for i in (try? JSONDecoder().decode([SetupItem].self, from: data)) ?? [] {
+                print("[\(SetupChecker.check(i.check) ? " ok " : "TODO")] \(i.name)\(i.isOptional ? " (optional)" : "") - \(i.group)")
+            }
+            exit(0)
+        }
         // `Backstage --report` prints a plain-text health report and exits (useful for AIs and terminals).
         if CommandLine.arguments.contains("--report") {
             for job in Scanner.scanAll() where !job.isVendor || CommandLine.arguments.contains("--all") {

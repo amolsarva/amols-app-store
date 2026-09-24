@@ -78,6 +78,7 @@ Keep every conversation, readable by you and your AIs, without Messages hoarding
 | 📦 **[Bigfiles](./bigfiles/)** | Finds heavy folders and checks recent activity before I decide what to archive. |
 | ☁️ **[Clean iCloud](./cleanicloud/)** | Finds iCloud duplicates and suspiciously large clusters, then asks before removing anything. |
 | 💿 **[Drive Dedup](./drive-dedup/)** | Scans external drives for duplicates and plans a clean consolidation with checkpoints. |
+| 📸 **[Screenshot Mover](https://github.com/amolsarva/screenshot-mover)** | Every screenshot is on your clipboard the instant you take it, and filed into iCloud › Desktop › Screenshots for later review. |
 | 📸 **[Screenshot Tidy](./screenshot-tidy/)** | Moves screenshots off the Desktop into a real Screenshots folder and keeps the habit alive. |
 | 🎙️ **[VOICEMEMOCLEANER](./voicememocleaner/)** 🆕 | Exports every Voice Memo — original and compressed copies — with title, date, duration, and GPS metadata for analysis and archival. |
 
@@ -116,7 +117,7 @@ Careful one-by-one outreach. Dry-run first, every recipient reviewed. Separate f
 |------|--------------|
 | ☀️ **[Sunlight](./sunlight/)** 🆕 | Native Mac controls for a Tasmota smart bulb: moods, slow color compositions, warm start-up and on-device daylight automation. Your bulb's details stay in a private local file. |
 
-_27 tools · generated from each tool's `tool.json` by `supporting-files/publish/build_catalog.py`; edit those, not this table._
+_28 tools · generated from each tool's `tool.json` by `supporting-files/publish/build_catalog.py`; edit those, not this table._
 <!-- catalog:end -->
 
 ---
