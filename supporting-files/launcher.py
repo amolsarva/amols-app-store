@@ -16,7 +16,17 @@ from pathlib import Path
 
 # This file lives in mac-scripts/supporting-files/launcher.py — the actual
 # tool folders (imessage-cleanup/, voicememocleaner/, etc.) are one level up.
-SCRIPTS_DIR = Path(__file__).resolve().parent.parent
+def _scripts_dir() -> Path:
+    """Repo root. Normally one level up; the Mac Scripts Launcher.app passes MAC_SCRIPTS_DIR."""
+    import os
+    for cand in (os.environ.get("MAC_SCRIPTS_DIR"), Path(__file__).resolve().parent.parent,
+                 Path.home() / "Documents/root/mac-scripts"):
+        if cand and (Path(cand) / "supporting-files").is_dir():
+            return Path(cand)
+    return Path(__file__).resolve().parent.parent
+
+
+SCRIPTS_DIR = _scripts_dir()
 
 # ---------------------------------------------------------------------------
 # Catalog
@@ -203,7 +213,7 @@ CATALOG = {
 # The dict above is only a fallback if that file is missing.
 try:
     import json as _json
-    CATALOG = _json.loads((Path(__file__).resolve().parent / "catalog" / "launcher.json").read_text())
+    CATALOG = _json.loads((SCRIPTS_DIR / "supporting-files" / "catalog" / "launcher.json").read_text())
 except Exception:
     pass
 

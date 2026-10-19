@@ -27,8 +27,14 @@ enum Shell {
 
 enum Scanner {
     static let home = FileManager.default.homeDirectoryForCurrentUser.path
-    static let documents = home + "/Documents"
     static let iCloudDocs = home + "/Library/Mobile Documents/com~apple~CloudDocs/Documents"
+    /// Where the synced `root/` lives. ~/Documents is only iCloud on Macs with "Desktop & Documents" sync on;
+    /// on others (or a stale local ~/Documents/root) the real copy is inside the iCloud Drive folder.
+    static let documents: String = {
+        let fm = FileManager.default
+        if fm.fileExists(atPath: iCloudDocs + "/root/mac-scripts/backstage") { return iCloudDocs }
+        return home + "/Documents"
+    }()
 
     static let vendorPrefixes = ["com.google", "com.microsoft", "com.adobe", "us.zoom", "com.rippling",
                                  "com.openai.atlas", "com.muse", "com.antlogic", "com.clipy", "com.openssh"]

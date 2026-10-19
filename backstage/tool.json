@@ -20,6 +20,40 @@
     "short": "Background jobs + scripts command center",
     "long": "Lists launchd jobs, cron and your scripts; runs scripts with live output and history; diagnoses and repairs broken LaunchAgents."
   },
+  "installs": [
+    {
+      "id": "backstage-app",
+      "what": "~/Applications/Backstage.app (it also offers 'Update now' itself when the source is newer)",
+      "present": [
+        "path:~/Applications/Backstage.app"
+      ],
+      "sources": [
+        "Sources",
+        "Package.swift",
+        "build.sh"
+      ],
+      "update": "build.sh",
+      "auto": true,
+      "note": "if build.sh says the app is owned by root: sudo chown -R \"$(whoami)\":staff ~/Applications/Backstage.app"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "backstage-dmg",
+      "what": "Backstage-<version>.dmg + latest.json: the download link and the update feed every installed Backstage polls",
+      "sources": [
+        "Sources",
+        "Package.swift",
+        "build.sh"
+      ],
+      "build": "build.sh --dmg",
+      "outputs": [
+        "dist/Backstage-*.dmg",
+        "dist/latest.json"
+      ],
+      "site": "downloads/backstage/"
+    }
+  ],
   "store_path": "backstage/",
   "added": "2026-09-24"
 }

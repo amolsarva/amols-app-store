@@ -22,6 +22,23 @@
     "short": "Nightly archive of every conversation, for people and AIs",
     "long": "Every night: all conversations to Markdown + a searchable SQLite db, attachments sorted by type (photos/videos/PDFs/audio) and shrunk. Self-healing schedule, dashboard, doctor, per-person pipelines."
   },
+  "installs": [
+    {
+      "id": "imessage-sync-helper",
+      "what": "~/Applications/iMessage Sync.app (Full Disk Access helper) + LaunchAgent com.amol.imessage-sync. The job's own code refreshes itself from the repo every run; only the helper app needs this.",
+      "present": [
+        "agent:com.amol.imessage-sync"
+      ],
+      "sources": [
+        "helper",
+        "install.sh"
+      ],
+      "update": "install.sh",
+      "auto": false,
+      "note": "rebuilding the helper gives it a new signature, so macOS drops its Full Disk Access grant: re-add it afterwards (run.sh grant)",
+      "first_run": "record"
+    }
+  ],
   "store_path": "imessage-sync/",
   "added": "2026-09-24"
 }

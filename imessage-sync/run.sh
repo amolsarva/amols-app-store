@@ -57,7 +57,33 @@ case "${1:-now}" in
                     exec /bin/bash "$DIR/run.sh" job
                   fi
                 fi
-                exec "$PY" "$SYNC" run --scheduled ;;
+                # 1) iCloud safeguard: queue downloads of the archive's parent folder, plus any extra
+                #    folders listed one per line in $ARCHIVE/_sync/icloud_paths.txt, so the sync never
+                #    works on evicted placeholders. Best effort; the result is handed to the post-run hook.
+                BRCTL_STATUS="not installed"
+                if command -v brctl >/dev/null 2>&1; then
+                  BRCTL_STATUS="ok"
+                  dirs=("$(dirname "$ARCHIVE")")
+                  if [[ -f "$ARCHIVE/_sync/icloud_paths.txt" ]]; then
+                    while IFS= read -r line; do [[ -n "$line" && "$line" != \#* ]] && dirs+=("${line/#\~/$HOME}"); done < "$ARCHIVE/_sync/icloud_paths.txt"
+                  fi
+                  for d in "${dirs[@]}"; do
+                    if [[ ! -d "$d" ]]; then BRCTL_STATUS="failed: missing $d"
+                    elif ! brctl download "$d" >/dev/null 2>&1; then BRCTL_STATUS="failed: $d"; fi
+                  done
+                fi
+                echo "$(date '+%F %T') brctl: $BRCTL_STATUS"
+                # 2) the sync itself (not exec'd any more, so the hook below still runs)
+                "$PY" "$SYNC" run --scheduled
+                rc=$?
+                # 3) optional post-run hook (personal follow-ups live next to the archive, not in this
+                #    public repo). It must never break the job: its failures are logged and ignored.
+                HOOK="$ARCHIVE/_sync/post_run.py"
+                if [[ -f "$HOOK" ]]; then
+                  SYNC_RC=$rc BRCTL_STATUS="$BRCTL_STATUS" IMESSAGE_SYNC_SCRIPT="$SYNC" IMESSAGE_SYNC_ARCHIVE="$ARCHIVE" \
+                    "$PY" "$HOOK" || echo "$(date '+%F %T') post-run hook exited $? (ignored)"
+                fi
+                exit $rc ;;
   now|run)      shift || true
                 budget="null"; [[ "${1:-}" == "--media-budget" ]] && budget="${2:-40}"
                 via_job "{\"action\": \"run\", \"media_budget\": $budget}" ;;

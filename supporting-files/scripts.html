@@ -943,6 +943,24 @@
     "isNew": true
   },
   {
+    "id": "python-guard",
+    "name": "Python Guard",
+    "slug": "python-guard",
+    "icon": "🐍",
+    "category": "mac-tool",
+    "tags": [
+      "mac-tool",
+      "python",
+      "homebrew",
+      "self-healing"
+    ],
+    "color": "linear-gradient(135deg,#1e3a8a,#facc15)",
+    "summary": "Keeps Python working on your Mac through every Homebrew upgrade: installs the matching Tk, rebuilds tool environments for the new version, and heals itself the moment Homebrew changes Python.",
+    "story": "Every Homebrew Python upgrade quietly breaks something: Tk apps stop opening, private environments point at a Python that no longer exists, and `pip install` is refused outright. Python Guard is the one place every tool in this collection asks for Python. It finds the best interpreter, installs `python-tk` for whatever version Homebrew just switched to, rebuilds each tool's private environment on the new version, and runs again automatically whenever Homebrew relinks python3.",
+    "path": "python-guard/",
+    "isNew": true
+  },
+  {
     "id": "secrets-sweep",
     "name": "Secrets Sweep",
     "slug": "secrets-sweep",

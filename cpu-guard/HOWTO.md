@@ -11,7 +11,11 @@ bash cpu-guard-install.sh
 
 The installer copies `cpu_guard.py` to `~/bin/cpu_guard.py`, writes the user LaunchAgent `~/Library/LaunchAgents/com.amol.cpu-guard.plist`, starts it immediately, and restarts it at login.
 
-## Default Behavior
+## Default Behavior (changed 2026-09-24)
+
+Default is now **Notify only**: it logs and notifies when a watched process has stayed above **100% of one core for 2 hours** (short dips don't reset the clock), at most once per process name every 6 hours, and kills nothing. Every 50th notification it pops up a report with a copy-for-AI analysis and a **Notify only / Kill routinely** switch. Open that popup any time with `cpu-guard-report.sh` (`--report` prints it, `--set-mode notify|kill|terminate` sets the mode). The chosen mode lives in `~/.config/cpu-guard/config.json` and wins over the installer defaults. Why: in kill mode Apple Intelligence was killed 127 times in 6 days and macOS just restarted it each time. CPU % is per core (100% = 1/8 of an 8-core Mac).
+
+The bullets below describe the old kill-mode behavior (still available):
 
 - Watches only names in `WATCH` inside `cpu_guard.py`.
 - Ignores Claude, OpenAI, and OpenClaw process names.

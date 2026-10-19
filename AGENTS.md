@@ -1,124 +1,146 @@
 <!-- ai-readme-pointer -->
 > **AI: read `~/Documents/root/AI-README.md` first (master map, preferences, path changes from the 2026-09-17 reorg), then this folder's `AI-README.md`. Before finishing, append your learnings to the *Learnings* section of that AI-README.**
 
-# AGENTS.md — read this first
+# AGENTS.md: read this first
 
-You are an AI agent looking at Amol's `mac-scripts` folder. This file exists
-so any agent (Claude, Codex, whatever comes next) can get oriented in under
-a minute instead of re-deriving the layout from scratch. Keep it up to date:
-if you restructure anything described here, edit this file in the same pass.
+You are an AI agent in Amol's `mac-scripts` folder (GitHub: `amolsarva/amols-app-store`, **public**).
+Many things outside this folder are built from it, run copies of it, or publish it. **If you change
+anything here, you are responsible for everything downstream.** That is the Touch protocol below.
+Keep this file current: if you restructure something it describes, edit this file in the same pass.
 
-## What this folder is
+## ⚠️ Touch protocol: every change, however small
 
-A personal collection of Mac automation scripts (iMessage export, iCloud
-cleanup, Voice Memos export, disk dedup, etc.), each in its own folder, plus
-three different ways to launch them, plus a public-facing "app store" page
-(`https://amolsarva.com/scripts`) built from a subset of the same content.
-It is also a git repo (`amolsarva/amols-app-store` on GitHub).
+A "touch" is any edit, add, move, rename or delete under `mac-scripts/`, including docs and `tool.json`.
+Before you tell Amol you're done:
+
+1. **Know the baseline first.** Before editing, run `supporting-files/publish/release.sh` (dry run,
+   changes nothing). It shows what is *already* stale or uncommitted, possibly from another session.
+   Don't sweep someone else's half-done work into a public release without looking at it.
+2. **Make the change properly:**
+   - Behavior or description changed → update that tool's `tool.json` (summary, launcher entry,
+     `installs`, `artifacts`) and its `README.md`. New tool → its own folder with `run.sh`,
+     `README.md` and `tool.json` (`"status": "review"`).
+   - It installs a copy of itself anywhere outside this folder (a LaunchAgent running a copy, a
+     built `.app`, a git hook, anything in `~/bin` or `~/Library/Application Support`) → declare
+     it under `installs` in `tool.json`. Undeclared copies go stale silently; that has caused
+     every "it just stopped working" bug here.
+   - It produces something people download (dmg, zip) → declare it under `artifacts`.
+   - It uses Python → go through `python-guard` (below). Never bare `python3` for Tk or
+     third-party packages, never `pip install --user` or `--break-system-packages`, and never a venv inside iCloud.
+   - Amol should be able to run it → register it in `backstage/scripts.json` (Launch/Install/Repair args).
+     A new Mac needs it → add an item to `backstage/setup.json`.
+   - Paths are self-relative; never hard-code `/Users/<name>` (two Macs, two home folders).
+3. **Release.** On a Mac: `supporting-files/publish/release.sh --go`, or Backstage ▸ ⭐ "Release mac-scripts" ▸ Launch.
+   This does all of it, in order: Python health → regenerate README, store page and launcher catalog → lint
+   Backstage registrations → syntax and privacy gate → re-install stale copies on this Mac →
+   rebuild Backstage dmg + update feed and extension zips → push GitHub → push amolsarva.com
+   → push own-repo tools → verify the live site and update feed.
+   **In a Linux/AI sandbox** (no swift, launchctl or Keychain): run the dry run, fix everything it
+   reports, then tell Amol, in so many words: *"Run Backstage ▸ Release mac-scripts (or
+   `release.sh --go`)."* Don't claim it's published.
+4. **Verify, don't assume:** `supporting-files/publish/installed.sh` (everything ✅),
+   `supporting-files/publish/build_catalog.py --check`, and the last release's full output in
+   `supporting-files/publish/.last-release.log` (private, synced by iCloud; readable from a sandbox). Backstage's
+   `backstage/run-history.json` records the exit code of every button press.
+5. **Write back** learnings to `mac-scripts/AI-README.md` (private) and, if you changed how
+   things fit together, this file.
+
+Hard rules: only Amol flips a tool from `review` to `public`. But a tool that a *public* tool depends
+on must itself be public, or the public repo breaks. Nothing personal goes in tracked files (names,
+numbers, emails, hostnames, Mac names; `publish.sh` gates the obvious ones, and you catch the rest).
+Secrets live in `~/Documents/root/utils and keys/vault/`, never here.
+
+## What depends on this folder (the downstream map)
+
+| Downstream | Built/updated from | How it stays current |
+|---|---|---|
+| github.com/amolsarva/amols-app-store | this repo (public tools only; non-public folders are auto-gitignored) | `release.sh --go` → `publish.sh --go` |
+| amolsarva.com/scripts (+ `/amols-scripts` redirect) | `supporting-files/scripts.html` (app list generated from `tool.json`) | copied to `../amolsarva.com/` and pushed (GitHub Pages) |
+| amolsarva.com/downloads/backstage/ `Backstage-<v>.dmg` + `latest.json` | `backstage/` (`build.sh --dmg`) | `artifacts` in `backstage/tool.json`; **every installed Backstage polls latest.json** to self-update |
+| amolsarva.com/downloads/*.zip (Chrome extensions) | e.g. `meet-tab-sidecar-extension/package-extension.sh` | `artifacts` in that `tool.json` |
+| README.md tool tables, `catalog/launcher.json`, announcement drafts | `tool.json` files | `build_catalog.py` (never hand-edit generated parts) |
+| Installed copies on each Mac: LaunchAgents' copies, `~/Applications/Backstage.app`, `Mac Scripts Launcher.app`, `Sunlight.app`, `iMessage Sync.app`, `Screenshot Mover.app`, git hooks | each tool's `installs` | `release.sh` (this Mac); other Macs: Backstage ▸ New Mac setup ▸ "Installed tools match the source" |
+| Python + Tk + tool venvs on each Mac | `python-guard/` | its LaunchAgent re-runs after every Homebrew Python change |
+| Own-repo tools: `screenshot-mover/`, `imessage-cleanup/` (nested git repos, gitignored here) | themselves | `release.sh` step 8 commits tracked changes and pushes |
+| Backstage's lists: `backstage/scripts.json`, `setup.json`, `job-notes.json` | hand-maintained (scripts.json/job-notes are private) | `deps.py lint` flags entries pointing at missing files |
+| Separate projects shown in the store: dadsbot, opensore, OpenSNORE | their own repos | cards only, via `supporting-files/catalog/external.json` |
 
 ## Layout
 
 ```
 mac-scripts/
-├── AGENTS.md              ← you are here
-├── README.md               GitHub landing page (must stay at repo root — GitHub only auto-renders a root README)
-├── launcher.command         ← the ONE thing meant to be loose here; double-click to launch
-├── <tool-name>/             one folder per script/tool (see "Tool folder convention" below)
-│   ├── run.sh                entry point most launchers look for
-│   ├── tool.json             catalog metadata: drives README, store page, launcher
-│   └── ...                   the tool's actual files, config, logs
-└── supporting-files/        launcher internals + publishing infra (see below) — not a tool, don't add it to any launcher's discovery list
-    ├── launcher.py            the primary Tk launcher (catalog-based, see below)
-    ├── main.js, mac-scripts.html, package.json, node_modules/   alternate Electron launcher
-    ├── scripts.html, homepage-section-snippet.html   content for amolsarva.com (apps list is generated)
-    ├── catalog/               external.json (web apps, separate repos), generated launcher.json, announcements/
-    ├── publish/               build_catalog.py (generator + --check) and publish.sh (one-step publish)
-    ├── MAINTENANCE.md         publishing notes
-    └── archive/               stale one-time scripts, kept only as a record — do not run from here
+├── AGENTS.md / CLAUDE.md   ← you are here (CLAUDE.md just points here)
+├── README.md               GitHub landing page (tool tables generated)
+├── launcher.command        ← the ONE loose file: double-click opens the Tk launcher
+├── <tool>/                 one folder per tool: run.sh · README.md · tool.json · the code
+├── python-guard/           shared Python resolver (Tk, venvs, self-heal agent): use it, don't reinvent it
+├── downloads/              build output of extension zips (published to amolsarva.com/downloads/)
+└── supporting-files/       not a tool
+    ├── launcher.py           THE launcher (Tk). launcher.command and Mac Scripts Launcher.app both run it
+    ├── scripts.html          amolsarva.com/scripts page (apps list generated)
+    ├── catalog/              external.json (web apps + own-repo tools), launcher.json (generated), announcements/
+    ├── publish/              release.sh (everything) · publish.sh (git + site) · build_catalog.py (generator,
+    │                         --check) · deps.py (installs/artifacts/lint engine) · installed.sh (wrapper)
+    ├── icons/                make-app-icon.swift: every app icon
+    ├── main.js, mac-scripts.html   legacy Electron launcher (auto-discovers folders; not generated)
+    ├── MAINTENANCE.md        publishing notes
+    └── archive/              (gitignored) stale scripts kept as a record; never run from here
 ```
 
-Root should stay down to `AGENTS.md`, `README.md`, `launcher.command`, and
-tool folders. If you're about to drop a new loose file at the repo root,
-stop — it almost certainly belongs inside a tool's own folder or inside
-`supporting-files/`.
+Repo root stays: `AGENTS.md`, `CLAUDE.md`, `README.md`, `launcher.command`, tool folders. Anything
+else at the root is clutter: put it in a tool folder or `supporting-files/`.
+Big local-only trees (gitignored, no store page): `opensore/`, `opensnore/`, `repo2audiobook/`.
 
-## Tool folder convention
+## tool.json (one source of truth per tool)
 
-When adding a new script, give it its own folder at the repo root, named `kebab-case`, containing:
+`name, icon, section, kind, status (public|review|private), category, tags, color, summary, story,
+launcher {entry, short, long}, store_path, added`, plus optional:
 
-- The actual script, and a `run.sh` thin wrapper that `exec`s it (self-relative paths only:
-  `$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)` / `Path(__file__).resolve().parent`), so it
-  works when double-clicked from Finder with an unknown cwd.
-- A `README.md` (public tools must have one).
-- A `tool.json` (copy `imessage-sync/tool.json`; start with `"status": "review"`).
-- Personal data (lists, logs, archives, config.json) must be gitignored before the first commit.
+```json
+"installs": [{ "id": "cpu-guard-agent", "what": "…",
+               "present": ["agent:com.amol.cpu-guard"],          // or "path:~/Applications/X.app"
+               "sources": ["cpu_guard.py", "cpu-guard-install.sh"],
+               "update": "cpu-guard-install.sh", "auto": true,    // false = needs a human (sudo, privacy re-grant)
+               "note": "…" }],
+"artifacts": [{ "id": "backstage-dmg", "sources": ["Sources", "Package.swift", "build.sh"],
+                "build": "build.sh --dmg", "outputs": ["dist/Backstage-*.dmg", "dist/latest.json"],
+                "site": "downloads/backstage/" }]
+```
 
-Then run `python3 supporting-files/publish/build_catalog.py`, and register it in Backstage's
-`scripts.json` if Amol should be able to run it from there.
+`supporting-files/publish/deps.py` hashes `sources` and compares with what was last installed on
+this Mac (`~/Library/Application Support/mac-scripts/installs.json`) or last built
+(`supporting-files/publish/.release-state.json`, private and iCloud-synced). Own-repo tools carry these
+keys in `catalog/external.json` instead.
 
-**Messages tools are split on purpose:** `imessage-sync` (nightly archive for people/AIs) and
-`imessage-cleanup` (interactive exporter / space saver, its own GitHub repo) are *backup*;
-`imessage-campaigns` (formerly `send-birthday-invites`) and `whatsapp-campaigns` are *outreach*.
-Keep them apart in names, READMEs and the store.
+## Python: always through python-guard
 
-## One source of truth: `tool.json` (since 2026-09-24)
+```bash
+G="$(dirname "$0")/../python-guard/pyenv.sh"
+/bin/bash "$G" exec --tk -- app.py "$@"                             # Tk apps
+PY="$(/bin/bash "$G" venv my-tool --pkg pandas --pkg PyYAML:yaml)"  # third-party packages (pip:module)
+/bin/bash "$G" find                                                 # stdlib-only scripts: best python3
+```
 
-Every tool folder carries a `tool.json` (name, icon, section, summary, story, tags, launcher
-entry, and **status**: `public` / `review` / `private`). Tools that live in their own repos,
-plus the web apps, are in `supporting-files/catalog/external.json`.
-`supporting-files/publish/build_catalog.py` generates, from those files:
+Why: Homebrew's Python ships without Tk (`python-tk@3.x` is separate), refuses pip (PEP 668), and
+every minor upgrade strands venvs. `pyenv.sh venv` keeps venvs in `~/Library/Application Support/python-guard/venvs/`
+(not iCloud), rebuilds them on the new Python, and restarts the LaunchAgents registered with `--restart`.
+Apple's `/usr/bin/python3` is 3.9: keep code 3.9-compatible (no 3.12-only f-string quote nesting).
 
-- the tool tables in `README.md` (between `<!-- catalog:start -->` / `<!-- catalog:end -->`),
-- the `apps` list in `supporting-files/scripts.html` (the amolsarva.com/scripts page),
-- `supporting-files/catalog/launcher.json` (what the Tk launcher shows),
-- draft launch posts in `supporting-files/catalog/announcements/` for newly public tools.
+## Launchers
 
-**Never hand-edit the generated parts.** Edit `tool.json`, then run the generator.
-`build_catalog.py --check` lists drift: folders without `tool.json`, tools waiting for Amol's OK
-(`review`), stale README/store page, unpushed commits, private files, and a stale live page.
+1. `launcher.command` and **Mac Scripts Launcher.app** (`mac-scripts-launcher/build_app.sh`) both run
+   `supporting-files/launcher.py` from this folder, through python-guard (Tk). The app only bundles a fallback copy.
+2. **Backstage** (`backstage/`): the command center (jobs, scripts, New Mac setup, recipes, self-update).
+3. Electron (`supporting-files/main.js`): legacy, hand-authored cards.
 
-### Publishing (GitHub + amolsarva.com in one step)
+## Messages tools are split on purpose
 
-`supporting-files/publish/publish.sh` rebuilds, validates syntax, **refuses to push anything
-private-looking** (contact CSVs, campaign archives, config.json, logs, rollback lists…), then with
-`--go` commits + pushes this repo, copies `scripts.html` into `../amolsarva.com/scripts.html`
-(plus an `/amols-scripts` redirect), pushes that, and waits until the live page matches.
-Both are in Backstage: "Publish App Store" (dry run by default) and "App Store check".
-Only set a tool to `public` after Amol says so (the page and repo are public).
+`imessage-sync` (nightly archive) and `imessage-cleanup` (interactive exporter, own repo) are *backup*;
+`imessage-campaigns` and `whatsapp-campaigns` are *outreach*. Keep them apart in names, READMEs, store.
 
-### Launchers
+## Known housekeeping
 
-1. **`launcher.command`** → `supporting-files/launcher.py` (Tk). Reads `catalog/launcher.json`.
-2. **Electron app** (`supporting-files/main.js` + `mac-scripts.html`): legacy; auto-discovers folders
-   with `run.sh`/`main.py`/`run.py`; cards are hand-authored, not generated.
-3. **Backstage** (`backstage/`): the command center. Its `scripts.json` is private per-Mac data.
-
-## Known housekeeping items
-
-- `sunlight/`: native SwiftUI Sengled controller; `run.sh` opens `dist/Sunlight.app`.
-  Registered in Backstage's `scripts.json` and the Tk launcher. Firmware behavior is
-  implemented as Tasmota rules, not an OTA binary. Settings backups contain credentials
-  and belong in `utils and keys/vault/sunlight/`, never the public app repository.
-
-- **`supporting-files/archive/FINISH-CLEANUP.command` and `finish-cleanup.sh`**:
-  stale one-time consolidation scripts. Both reference a Claude API key that
-  was accidentally committed to the public GitHub repo in `drive_dedup/run.sh`
-  (prefix `sk-ant-api03-REDACTED...`). The duplicate `drive_dedup/`
-  folder is already gone, so this was likely already handled — but if nobody
-  has confirmed the key was rotated at
-  `https://console.anthropic.com/settings/keys`, flag that to Amol. Do not
-  run these scripts from their current location; they assume they're sitting
-  at the repo root.
-- **`_writetest`** (if still present at repo root): an empty leftover stub
-  from a prior session. Safe to delete; a previous cleanup pass couldn't
-  remove it due to a permissions error.
-
-## Ground rules for future edits
-
-- Keep the repo root uncluttered — new loose files at the root are a smell.
-- Any script needs to work when double-clicked from Finder with an unknown
-  cwd — always resolve its own folder first.
-- If you move something referenced by name in `README.md`,
-  `supporting-files/MAINTENANCE.md`, `supporting-files/scripts.html`, or
-  `supporting-files/mac-scripts.html`, update the reference in the same pass.
-- If you add or move anything that changes this layout, update this file.
+- `supporting-files/archive/FINISH-CLEANUP.command` / `finish-cleanup.sh`: stale one-time scripts that
+  reference an Anthropic key once committed to this public repo (`drive_dedup/run.sh`, prefix
+  `sk-ant-api03-REDACTED…`). If nobody has confirmed it was rotated, flag it to Amol. Don't run them.
+- `cpu-guard/.venv` (old in-iCloud venv) is obsolete once cpu-guard is re-installed via python-guard.

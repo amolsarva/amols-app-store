@@ -36,12 +36,14 @@ step "1. Rebuild README, store page, launcher catalog, announcement drafts"
 
 step "2. Validate"
 bad=0
-while IFS= read -r f; do bash -n "$f" 2>/dev/null || { echo "  syntax error: $f"; bad=1; }; done \
+while IFS= read -r f; do [[ -f "$f" ]] || continue; bash -n "$f" 2>/dev/null || { echo "  syntax error: $f"; bad=1; }; done \
   < <(git ls-files '*.sh' '*.command'; git ls-files --others --exclude-standard '*.sh' '*.command')
-while IFS= read -r f; do "$PY" -m py_compile "$f" 2>/dev/null || { echo "  syntax error: $f"; bad=1; }; done \
+while IFS= read -r f; do [[ -f "$f" ]] || continue; "$PY" -m py_compile "$f" 2>/dev/null || { echo "  syntax error: $f"; bad=1; }; done \
   < <(git ls-files '*.py'; git ls-files --others --exclude-standard '*.py')
-node -e "const fs=require('fs');const h=fs.readFileSync('supporting-files/scripts.html','utf8');for(const m of h.matchAll(/<script>([\s\S]*?)<\/script>/g)) new Function(m[1]);" \
-  || { echo "  store page JavaScript does not parse"; bad=1; }
+if command -v node >/dev/null; then
+  node -e "const fs=require('fs');const h=fs.readFileSync('supporting-files/scripts.html','utf8');for(const m of h.matchAll(/<script>([\s\S]*?)<\/script>/g)) new Function(m[1]);" \
+    || { echo "  store page JavaScript does not parse"; bad=1; }
+else echo "  (node not installed: store page JavaScript not checked; Backstage ▸ New Mac setup ▸ Node.js)"; fi
 [[ $bad -eq 0 ]] && echo "  ✓ scripts and store page parse" || die "fix the errors above first"
 
 step "3. Private-data gate"
@@ -70,7 +72,7 @@ step "5. Commit + push amols-app-store"
 git add -A
 "$PY" "$HERE/build_catalog.py" --leaks >/dev/null || die "private files got staged; aborting"
 if ! git diff --cached --quiet; then
-  git commit -q -m "Publish App Store catalog ($(date +%F))" || die "commit failed (the global pre-commit secret hook may have blocked it; read its message)"
+  git commit -q -m "${RELEASE_MSG:-Publish App Store catalog ($(date +%F))}" || die "commit failed (the global pre-commit secret hook may have blocked it; read its message)"
 fi
 push "$REPO" || die "push failed"
 echo "  ✓ pushed $(git rev-parse --short HEAD)"
@@ -80,6 +82,7 @@ step "6. Update amolsarva.com"
 git -C "$SITE" pull -q --rebase --autostash "$(git -C "$SITE" remote get-url origin | sed -E 's#^git@github.com:#https://github.com/#')" "$(git -C "$SITE" branch --show-current)" \
   || die "could not bring the website repo up to date (resolve in $SITE, then re-run)"
 cp supporting-files/scripts.html "$SITE/scripts.html"
+"$PY" "$HERE/deps.py" artifacts >/dev/null || true   # re-copy downloads (the pull above may have reset them)
 cat > "$SITE/amols-scripts.html" <<'HTML'
 <!doctype html><meta charset="utf-8"><title>Amol's App Store</title>
 <meta http-equiv="refresh" content="0; url=/scripts"><link rel="canonical" href="https://amolsarva.com/scripts">
@@ -88,7 +91,9 @@ HTML
 (
   cd "$SITE" || exit 1
   git add scripts.html amols-scripts.html
-  git diff --cached --quiet || git commit -q -m "Update App Store page from amols-app-store ($(date +%F))" || exit 1
+  # published artifacts (Backstage dmg + update feed, extension zips), copied in by deps.py artifacts
+  [[ -d downloads ]] && git add -A downloads
+  git diff --cached --quiet || git commit -q -m "Update App Store page and downloads from amols-app-store ($(date +%F))" || exit 1
   true
 ) || die "website push failed (check: git -C \"$SITE\" fsck)"
 push "$SITE" || die "website push failed"

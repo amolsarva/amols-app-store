@@ -30,6 +30,7 @@ If a tool looks useful but the steps feel intimidating, the easiest path is alwa
 <!-- catalog:start -->
 ## 🆕 What's new
 
+- 🐍 **[Python Guard](./python-guard/)** (2026-10-17): Keeps Python working on your Mac through every Homebrew upgrade: installs the matching Tk, rebuilds tool environments for the new version, and heals itself the moment Homebrew changes Python.
 - 🎛️ **[Backstage](./backstage/)** (2026-09-24): A menu-bar command center for everything running in the background on your Mac: LaunchAgents, cron, your own scripts, with run history and one-click repairs.
 - 🔏 **[git-privacy](./git-privacy/)** (2026-09-24): Keep code on GitHub and personal notes on your Macs: anything git ignores stays in your iCloud-synced folders and is blocked from ever being pushed.
 - 📣 **[iMessage Campaign Studio](./imessage-campaigns/)** (2026-09-24): Find people by what you've talked about before, review each one, then send separate personal texts, with dry-run first and reply-aware follow-ups.
@@ -109,6 +110,7 @@ Careful one-by-one outreach. Dry-run first, every recipient reviewed. Separate f
 | ↻ **[GitHub Autopush](./github-autopush/)** | Keeps local repos moving to GitHub with readable commits and a background LaunchAgent. |
 | 🖥️ **[Mac Migrator](./mac-migrator/)** | Bundles LaunchAgents, shell config, automation folders, brew lists, diagnostics, and restore steps. |
 | 🚀 **[Mac Scripts Launcher](./mac-scripts-launcher/)** | A native-feeling little app to browse and launch everything in this collection from one window. |
+| 🐍 **[Python Guard](./python-guard/)** 🆕 | Keeps Python working on your Mac through every Homebrew upgrade: installs the matching Tk, rebuilds tool environments for the new version, and heals itself the moment Homebrew changes Python. |
 | 🔐 **[Secrets Sweep](./secrets-sweep/)** 🆕 | Audits a folder tree for API keys, tokens and credential files that drifted out of your vault, and can move them in. |
 
 ### Home & gadgets
@@ -117,7 +119,7 @@ Careful one-by-one outreach. Dry-run first, every recipient reviewed. Separate f
 |------|--------------|
 | ☀️ **[Sunlight](./sunlight/)** 🆕 | Native Mac controls for a Tasmota smart bulb: moods, slow color compositions, warm start-up and on-device daylight automation. Your bulb's details stay in a private local file. |
 
-_28 tools · generated from each tool's `tool.json` by `supporting-files/publish/build_catalog.py`; edit those, not this table._
+_29 tools · generated from each tool's `tool.json` by `supporting-files/publish/build_catalog.py`; edit those, not this table._
 <!-- catalog:end -->
 
 ---

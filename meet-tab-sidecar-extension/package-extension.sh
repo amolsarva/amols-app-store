@@ -13,6 +13,8 @@ zip -r "$ZIP" . \
   -x "*.DS_Store" \
   -x "README.md" \
   -x "INSTALL.md" \
-  -x "package-extension.sh"
+  -x "package-extension.sh" \
+  -x "run.sh" \
+  -x "tool.json"
 
 echo "Wrote $ZIP"

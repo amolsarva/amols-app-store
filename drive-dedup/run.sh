@@ -25,18 +25,13 @@ if [ ! -d "$DRIVE" ]; then
 fi
 echo "✅ Drive found: $DRIVE"
 
-# Check Python
-if ! command -v python3 &>/dev/null; then
-  echo "❌ python3 not found. Install from https://www.python.org"
+# Python (and the anthropic package when an API key is set) via python-guard's private venv.
+GUARD="$(cd "$(dirname "$0")" && pwd)/../python-guard/pyenv.sh"
+if [ -n "$CLAUDE_API_KEY" ]; then PY="$(/bin/bash "$GUARD" venv drive-dedup --pkg anthropic)"
+else PY="$(/bin/bash "$GUARD" find)"; fi
+if [ -z "$PY" ]; then
+  echo "❌ no usable python3 (run ../python-guard/run.sh doctor)"
   exit 1
-fi
-
-# Install anthropic if needed
-if [ -n "$CLAUDE_API_KEY" ]; then
-  if ! python3 -c "import anthropic" 2>/dev/null; then
-    echo "📦 Installing anthropic Python package..."
-    pip3 install anthropic --quiet 2>/dev/null || pip3 install anthropic --break-system-packages --quiet
-  fi
 fi
 
 # ── Figure out where we are ────────────────────────────────────────────────────
@@ -66,7 +61,7 @@ if $HAS_DUPES; then
 else
   echo "STEP 1: Scanning drive and finding duplicates (resumes if interrupted)"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  python3 phase1_scan.py "$DRIVE" --output "$SCAN_OUTPUT"
+  "$PY" phase1_scan.py "$DRIVE" --output "$SCAN_OUTPUT"
   echo ""
 fi
 
@@ -75,11 +70,11 @@ echo "STEP 2: Building consolidation plan (dry run)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 if [ -n "$CLAUDE_API_KEY" ]; then
-  python3 phase2_reorganize.py "$DRIVE" \
+  "$PY" phase2_reorganize.py "$DRIVE" \
     --scan-dir "$SCAN_OUTPUT" \
     --claude-api-key "$CLAUDE_API_KEY"
 else
-  python3 phase2_reorganize.py "$DRIVE" \
+  "$PY" phase2_reorganize.py "$DRIVE" \
     --scan-dir "$SCAN_OUTPUT"
 fi
 

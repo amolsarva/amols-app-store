@@ -20,6 +20,20 @@
     "short": "Auto-push git repos to GitHub",
     "long": "Installs a background LaunchAgent that automatically commits and pushes your git repos to GitHub on a schedule. Set it up once and your projects stay synced without you remembering to push."
   },
+  "installs": [
+    {
+      "id": "github-autopush-agent",
+      "what": "LaunchAgent com.amol.github-autopush running ~/bin/github-autopush-runner.sh",
+      "present": [
+        "agent:com.amol.github-autopush"
+      ],
+      "sources": [
+        "github-autopush-runner.sh"
+      ],
+      "update": "github-autopush-manager.sh install",
+      "auto": true
+    }
+  ],
   "store_path": "github-autopush/",
   "added": "2026-05-01"
 }

@@ -1082,24 +1082,77 @@ def write_status(status: dict) -> None:
         print(f"(could not write status to {SYNC_DIR}: {e}; wrote {STATE_DIR / 'status.json'})")
 
 
+def _friendly_trigger(t: str) -> str:
+    t = t or ""
+    if t.startswith("requested"):
+        return "You started it"
+    if t.startswith("scheduled"):
+        rest = t[len("scheduled"):].strip(" ()")
+        return "Automatic" + (f" ({rest})" if rest else "")
+    return t
+
+
+def _friendly_secs(v) -> str:
+    try:
+        n = int(float(v))
+    except (TypeError, ValueError):
+        return str(v)
+    return f"{n}s" if n < 90 else f"{n // 60} min {n % 60}s"
+
+
+def _describe_stage(name: str, s: dict) -> tuple[str, str]:
+    g = s.get
+    if name == "snapshot":
+        return "1. Copy Messages", f"Made a read-only working copy of your Messages database ({g('messages_in_messages_app', '?')} messages in the Messages app). Nothing in Messages was changed."
+    if name == "contacts":
+        return "2. Read Contacts", f"Read {g('names', '?')} names from your address books so conversations get real names."
+    if name == "conversations":
+        return "3. Conversations", f"{g('conversations', '?')} conversations found ({g('renamed', 0)} renamed)."
+    if name == "messages":
+        return "4. Messages", f"{g('new', 0)} new messages saved, {g('changed', 0)} updated. The archive now holds {g('archive_total', '?')}."
+    if name == "attachments":
+        return "5. Photos & files found", f"{g('new_attachments', 0)} new attachments found in Messages."
+    if name == "media":
+        bits = [f"{g('archived', 0)} saved"]
+        if g("still_queued"):
+            bits.append(f"{g('still_queued')} still to do")
+        if g("missing_retry_later"):
+            bits.append(f"{g('missing_retry_later')} waiting for iCloud to download them")
+        if g("failed"):
+            bits.append(f"{g('failed')} failed (will retry)")
+        if g("gave_up"):
+            bits.append(f"{g('gave_up')} gave up")
+        saved = g("space_saved")
+        extra = f" The saved copies are about {saved} smaller than the originals (photos resized, videos at up to 720p). The originals stay in Messages." if saved else ""
+        return "6. Save photos & files", ", ".join(bits) + "." + extra
+    if name == "markdown":
+        return "7. Readable files", f"Wrote {g('months_written', '?')} monthly and {g('days_written', '?')} daily text files{' (full rebuild)' if g('full_rebuild') else ''}."
+    if name == "pipelines":
+        return "8. Per-person exports", ", ".join(f"{k}: {v}" for k, v in s.items() if k != "seconds") + "."
+    if name == "publish":
+        return "9. Search database", f"Updated the searchable database ({g('messages_db', '?')})."
+    return name, json.dumps(s, ensure_ascii=False)[:300]
+
+
 def render_status_html(st: dict) -> str:
     e = html.escape
     last = (st.get("runs") or [{}])[-1]
     ok = last.get("result") == "ok"
-    state_word = {"ok": "Healthy", "warning": "Finished with warnings", "failed": "Failed",
+    state_word = {"ok": "All good", "warning": "Finished, with notes", "failed": "Didn't finish",
                   "running": "Running now"}.get(last.get("result"), "No runs yet")
     color = {"ok": "#1f8a4c", "warning": "#b7791f", "failed": "#c53030", "running": "#2b6cb0"}.get(
         last.get("result"), "#666")
     rows = []
     for r in reversed(st.get("runs", [])[-20:]):
-        rows.append(f"<tr><td>{e(str(r.get('started', ''))[:16].replace('T', ' '))}</td><td>{e(r.get('trigger', ''))}</td>"
-                    f"<td class='{e(r.get('result', ''))}'>{e(r.get('result', ''))}</td><td>{e(str(r.get('seconds', '')))}s</td>"
+        rows.append(f"<tr><td>{e(str(r.get('started', ''))[:16].replace('T', ' '))}</td><td>{e(_friendly_trigger(r.get('trigger', '')))}</td>"
+                    f"<td class='{e(r.get('result', ''))}'>{e({'ok': 'Worked', 'failed': 'Didn’t finish'}.get(r.get('result', ''), r.get('result', '')))}</td><td>{e(_friendly_secs(r.get('seconds', '')))}</td>"
                     f"<td>{e(str((r.get('stages', {}).get('messages') or {}).get('new', '')))}</td>"
                     f"<td>{e(str((r.get('stages', {}).get('media') or {}).get('archived', '')))}</td>"
                     f"<td>{e(r.get('error', {}).get('message', '') if r.get('error') else '')[:120]}</td></tr>")
     stage_rows = []
     for name, s in (last.get("stages") or {}).items():
-        stage_rows.append(f"<tr><td>{e(name)}</td><td><code>{e(json.dumps(s, ensure_ascii=False)[:400])}</code></td></tr>")
+        label, text = _describe_stage(name, s)
+        stage_rows.append(f"<tr><td><b>{e(label)}</b></td><td>{e(text)}</td></tr>")
     err = last.get("error")
     err_html = ""
     if err:
@@ -1117,30 +1170,30 @@ def render_status_html(st: dict) -> str:
 body{{font:15px/1.45 -apple-system,system-ui,sans-serif;background:var(--bg);color:var(--fg);max-width:1000px;margin:0 auto;padding:20px 16px}}
 h1{{font-size:22px;margin:0 0 4px}} .pill{{display:inline-block;padding:3px 10px;border-radius:99px;color:#fff;background:{color};font-weight:600}}
 .grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:16px 0}}
-.card{{background:var(--card);border-radius:10px;padding:10px 12px}} .card b{{display:block;font-size:20px}}
+.card{{background:var(--card);border-radius:10px;padding:10px 12px}} .card b{{display:block;font-size:20px}} .card small{{display:block;font-size:12px;margin-top:2px}}
 .mut{{color:var(--mut)}} table{{border-collapse:collapse;width:100%;font-size:13px}} td,th{{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top}}
 .failed{{color:#c53030;font-weight:600}} .warning{{color:#b7791f;font-weight:600}} .ok{{color:#1f8a4c}}
 .err{{background:#c5303018;border:1px solid #c5303055;border-radius:10px;padding:12px;margin:12px 0}}
 code{{font-size:12px;word-break:break-all}} .wrap{{overflow-x:auto}}
 </style></head><body>
 <h1>iMessage Sync</h1>
+<p class="mut">A searchable copy of all your iMessage and SMS conversations, saved on this Mac. It only <b>reads</b> your Messages app. It never changes or deletes anything there, and messages you delete later stay in the copy.</p>
 <div><span class="pill">{e(state_word)}</span> <span class="mut">last run {e(str(last.get('started', '—'))[:16].replace('T', ' '))} on {e(last.get('machine', ''))} · primary Mac: {e(str(st.get('primary', 'not set')))}</span></div>
 {err_html}
 {'<ul>' + warns + '</ul>' if warns else ''}
 <div class="grid">
- <div class="card"><span class="mut">Messages archived</span><b>{e(str(st.get('totals', {}).get('messages', '—')))}</b></div>
- <div class="card"><span class="mut">Conversations</span><b>{e(str(st.get('totals', {}).get('conversations', '—')))}</b></div>
- <div class="card"><span class="mut">Last success</span><b>{e(str(st.get('last_success', '—'))[:16].replace('T', ' '))}</b></div>
- <div class="card"><span class="mut">Media archived / queued</span><b>{e(str(q.get('done', 0)))} / {e(str(q.get('pending', 0) + q.get('failed', 0)))}</b></div>
- <div class="card"><span class="mut">Offloaded, retrying / gave up</span><b>{e(str(q.get('missing', 0)))} / {e(str(q.get('gave_up', 0)))}</b></div>
+ <div class="card"><span class="mut">Messages saved</span><b>{e(str(st.get('totals', {}).get('messages', '—')))}</b><small class="mut">not counting tapback reactions</small></div>
+ <div class="card"><span class="mut">Conversations</span><b>{e(str(st.get('totals', {}).get('conversations', '—')))}</b><small class="mut">people and groups</small></div>
+ <div class="card"><span class="mut">Last finished OK</span><b>{e(str(st.get('last_success', '—'))[:16].replace('T', ' '))}</b><small class="mut">it runs by itself between 1 and 6am</small></div>
+ <div class="card"><span class="mut">Photos &amp; files saved</span><b>{e(str(q.get('done', 0)))}</b><small class="mut">{e(str(q.get('pending', 0) + q.get('failed', 0)))} still to do</small></div>
+ <div class="card"><span class="mut">Waiting on iCloud</span><b>{e(str(q.get('missing', 0)))}</b><small class="mut">not on this Mac yet; retried later ({e(str(q.get('gave_up', 0)))} given up)</small></div>
 </div>
-<p class="mut">Media by kind: {e(', '.join(f"{k} {v['files']} ({v['size']})" for k, v in media.items()) or '—')}</p>
-<h2>Last run, stage by stage</h2><div class="wrap"><table>{''.join(stage_rows) or '<tr><td>—</td></tr>'}</table></div>
-<h2>Recent runs</h2><div class="wrap"><table><tr><th>Started</th><th>Trigger</th><th>Result</th><th>Time</th><th>New msgs</th><th>Media</th><th>Error</th></tr>{''.join(rows)}</table></div>
-<h2>Commands</h2><p class="mut">In Backstage, open <b>iMessage sync</b> and type one of these in Arguments, or run <code>mac-scripts/imessage-sync/run.sh &lt;command&gt;</code>:
-<br><code>now</code> run immediately · <code>status</code> · <code>doctor</code> check everything and explain fixes · <code>retry-media</code> retry files that gave up ·
-<code>take-over</code> make this Mac the primary · <code>install</code> / <code>uninstall</code> the nightly job</p>
-<p class="mut">Files: archive <code>{e(str(ARCHIVE))}</code> · logs <code>_sync/logs/</code> · machine-readable status <code>_sync/status.json</code></p>
+<p class="mut">What's saved: {e(', '.join(f"{v['files']} {k} ({v['size']})" for k, v in media.items()) or '—')}. Photos are resized and videos are saved at up to 720p to keep the archive small; the originals stay in Messages.</p>
+<h2>What the last run did</h2><div class="wrap"><table>{''.join(stage_rows) or '<tr><td>Nothing yet.</td></tr>'}</table></div>
+<h2>Recent runs</h2><div class="wrap"><table><tr><th>When</th><th>Started by</th><th>Result</th><th>Took</th><th>New messages</th><th>Photos &amp; files</th><th>Problem</th></tr>{''.join(rows)}</table></div>
+<h2>What you can do</h2><p class="mut">This page refreshes by itself every minute. In Backstage, open <b>iMessage sync</b> and use <b>Launch</b> (opens this page), <b>Install</b> (sets up the nightly job) or <b>Repair</b> (fixes the Full Disk Access permission). To run something else, open "Advanced" and type it in Arguments (or run <code>mac-scripts/imessage-sync/run.sh &lt;word&gt;</code>):
+<br>leave blank or <code>now</code> = sync right now · <code>doctor</code> = check everything and explain fixes · <code>retry-media</code> = try again on files that were given up · <code>take-over</code> = make this Mac the one that does the archiving · <code>status</code> = short summary · <code>uninstall</code> = remove the nightly job</p>
+<p class="mut">Archive folder: <code>{e(str(ARCHIVE))}</code> · logs: <code>_sync/logs/</code> · raw status: <code>_sync/status.json</code></p>
 </body></html>"""
 
 

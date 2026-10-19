@@ -20,6 +20,22 @@
     "short": "Auto-organize screenshots",
     "long": "Installs a background watcher that moves new Desktop screenshots into dated folders automatically, so they never pile up on your Desktop."
   },
+  "installs": [
+    {
+      "id": "screenshot-tidy-agent",
+      "what": "LaunchAgents com.amol.screenshot-tidy (+ clipboard helper) running ~/bin/screenshot-tidy.sh and ~/bin/screenshot-settings.sh",
+      "present": [
+        "agent:com.amol.screenshot-tidy"
+      ],
+      "sources": [
+        "screenshot-tidy.sh",
+        "screenshot-settings.sh",
+        "screenshot-tidy-install.sh"
+      ],
+      "update": "screenshot-tidy-install.sh",
+      "auto": true
+    }
+  ],
   "store_path": "screenshot-tidy/",
   "added": "2026-05-01"
 }

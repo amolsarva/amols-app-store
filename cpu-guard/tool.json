@@ -20,6 +20,21 @@
     "short": "Stop runaway background processes",
     "long": "Installs a background watcher that throttles macOS background processes when they stay hot too long, using quiet action-only notifications instead of repeated alerts."
   },
+  "installs": [
+    {
+      "id": "cpu-guard-agent",
+      "what": "LaunchAgent com.amol.cpu-guard running ~/bin/cpu_guard.py with python-guard's cpu-guard venv",
+      "present": [
+        "agent:com.amol.cpu-guard"
+      ],
+      "sources": [
+        "cpu_guard.py",
+        "cpu-guard-install.sh"
+      ],
+      "update": "cpu-guard-install.sh",
+      "auto": true
+    }
+  ],
   "store_path": "cpu-guard/cpu_guard.py",
   "added": "2026-05-01"
 }

@@ -20,6 +20,20 @@
     "short": "Keep private files off GitHub",
     "long": "audit: every repo's private files, unpushed leaks and corruption · install: guard this Mac · scrub <repo> --apply: remove private files from unpushed commits."
   },
+  "installs": [
+    {
+      "id": "git-privacy-hooks",
+      "what": "global git hooks (pre-commit, pre-push) + global ignore patterns in ~/.config/git",
+      "present": [
+        "path:~/.config/git/hooks/pre-commit"
+      ],
+      "sources": [
+        "git_privacy.py"
+      ],
+      "update": "run.sh install",
+      "auto": true
+    }
+  ],
   "store_path": "git-privacy/",
   "added": "2026-09-24"
 }

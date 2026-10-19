@@ -8,16 +8,26 @@ import ServiceManagement
 
 enum PortablePath {
     static func expand(_ p: String) -> String {
-        if p.hasPrefix("~/") { return Scanner.home + String(p.dropFirst(1)) }
-        if p.hasPrefix("/Users/") {
+        var out = p
+        if p.hasPrefix("~/") { out = Scanner.home + String(p.dropFirst(1)) }
+        else if p.hasPrefix("/Users/") {
             let parts = p.split(separator: "/", maxSplits: 2, omittingEmptySubsequences: true)
-            if parts.count == 3, parts[1] != "Shared" { return Scanner.home + "/" + parts[2] }
+            if parts.count == 3, parts[1] != "Shared" { out = Scanner.home + "/" + parts[2] }
         }
-        return p
+        // ~/Documents may be a stale local folder; the synced copy lives in iCloud Drive on some Macs.
+        let plain = Scanner.home + "/Documents"
+        if Scanner.documents != plain, out == plain || out.hasPrefix(plain + "/") {
+            out = Scanner.documents + out.dropFirst(plain.count)
+        }
+        return out
     }
 
     static func portable(_ p: String) -> String {
-        p.hasPrefix(Scanner.home + "/") ? "~" + p.dropFirst(Scanner.home.count) : p
+        var p = p
+        if Scanner.documents != Scanner.home + "/Documents", p.hasPrefix(Scanner.documents + "/") {
+            p = Scanner.home + "/Documents" + p.dropFirst(Scanner.documents.count)
+        }
+        return p.hasPrefix(Scanner.home + "/") ? "~" + p.dropFirst(Scanner.home.count) : p
     }
 }
 
@@ -67,6 +77,14 @@ enum SetupChecker {
             return Shell.run("/bin/launchctl", ["print", "gui/\(getuid())/\(c.value)"], timeout: 8).code == 0
         case "xcode-clt":
             return Shell.run("/usr/bin/xcode-select", ["-p"], timeout: 8).code == 0
+        case "script":
+            // "mac-scripts/foo/check.sh arg": exit 0 = OK. Used for things a path can't express,
+            // e.g. "Python has Tk for the current Homebrew version" or "installed copies match the source".
+            let parts = c.value.split(separator: " ").map(String.init)
+            guard let first = parts.first else { return false }
+            let path = resolve(first)
+            guard FileManager.default.fileExists(atPath: path) else { return false }
+            return Shell.run("/bin/bash", [path] + Array(parts.dropFirst()), timeout: 90).code == 0
         default:
             return false
         }

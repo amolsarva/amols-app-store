@@ -10,45 +10,22 @@ OLD_LABEL="com.user.cpuguard"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 OLD_PLIST="$HOME/Library/LaunchAgents/$OLD_LABEL.plist"
 LOG_DIR="$HOME/Library/Logs"
-VENV_DIR="$SCRIPT_DIR/.venv"
 
 if [[ ! -f "$GUARD_SCRIPT" ]]; then
   echo "ERROR: $GUARD_SCRIPT not found"
   exit 1
 fi
 
-# Homebrew's python3 is an externally-managed environment (PEP 668) — a bare
-# `pip install --user psutil` against it always fails. Use a private venv next
-# to this script instead, so this step is self-contained and actually installs
-# rather than just printing instructions.
-SYSTEM_PYTHON="$(command -v python3)"
-if [[ ! -x "$VENV_DIR/bin/python3" ]]; then
-  echo "Creating venv at $VENV_DIR ..."
-  "$SYSTEM_PYTHON" -m venv "$VENV_DIR"
+# Python comes from python-guard: a private venv OUTSIDE iCloud
+# (~/Library/Application Support/python-guard/venvs/cpu-guard). python-guard rebuilds it whenever
+# Homebrew moves to a new Python and then restarts this agent, so it never points at a dead Python.
+# (Until 2026-10-17 the venv lived in iCloud next to this script; evictions and upgrades broke it.)
+GUARD="$SCRIPT_DIR/../python-guard/pyenv.sh"
+PYTHON_BIN="$(/bin/bash "$GUARD" venv cpu-guard --pkg psutil --restart "$LABEL")" || {
+  echo "ERROR: could not build cpu-guard's Python environment. See: $SCRIPT_DIR/../python-guard/run.sh doctor"; exit 1; }
+if ! "$PYTHON_BIN" -c 'import psutil; psutil.cpu_percent()' >/dev/null 2>&1; then
+  echo "ERROR: psutil does not import from $PYTHON_BIN. See ~/Library/Logs/python-guard.log"; exit 1
 fi
-
-if ! "$VENV_DIR/bin/python3" -c 'import psutil, psutil.cpu_percent' >/dev/null 2>&1; then
-  echo "Installing psutil into $VENV_DIR ..."
-  "$VENV_DIR/bin/python3" -m pip install --quiet --upgrade pip psutil
-fi
-
-# Verify the install actually works. A stale/corrupted venv (e.g. an evicted
-# iCloud placeholder — 0 bytes on disk despite reporting a real size) can look
-# installed but fail to import; rebuild once from scratch before giving up.
-if ! "$VENV_DIR/bin/python3" -c 'import psutil; psutil.cpu_percent()' >/dev/null 2>&1; then
-  echo "psutil install looks broken (corrupt venv?) — rebuilding venv from scratch ..."
-  rm -rf "$VENV_DIR"
-  "$SYSTEM_PYTHON" -m venv "$VENV_DIR"
-  "$VENV_DIR/bin/python3" -m pip install --quiet --upgrade pip psutil
-fi
-
-if ! "$VENV_DIR/bin/python3" -c 'import psutil; psutil.cpu_percent()' >/dev/null 2>&1; then
-  echo "ERROR: psutil still doesn't import cleanly from $VENV_DIR after a rebuild."
-  echo "Run manually to see the real error: $VENV_DIR/bin/python3 -m pip install --upgrade psutil"
-  exit 1
-fi
-
-PYTHON_BIN="$VENV_DIR/bin/python3"
 
 chmod +x "$GUARD_SCRIPT"
 mkdir -p "$(dirname "$PLIST")" "$LOG_DIR" "$HOME/bin"
@@ -69,12 +46,12 @@ cat > "$PLIST" <<PLIST
   <key>KeepAlive</key><true/>
   <key>EnvironmentVariables</key>
   <dict>
-    <key>CPU_GUARD_ACTION</key><string>${CPU_GUARD_ACTION:-kill}</string>
+    <key>CPU_GUARD_ACTION</key><string>${CPU_GUARD_ACTION:-notify}</string>
     <key>CPU_GUARD_NOTIFY_EVENTS</key><string>${CPU_GUARD_NOTIFY_EVENTS:-action,error}</string>
-    <key>CPU_GUARD_CPU_LIMIT</key><string>${CPU_GUARD_CPU_LIMIT:-80}</string>
-    <key>CPU_GUARD_DURATION</key><string>${CPU_GUARD_DURATION:-30}</string>
+    <key>CPU_GUARD_CPU_LIMIT</key><string>${CPU_GUARD_CPU_LIMIT:-100}</string>
+    <key>CPU_GUARD_DURATION</key><string>${CPU_GUARD_DURATION:-7200}</string>
     <key>CPU_GUARD_INTERVAL</key><string>${CPU_GUARD_INTERVAL:-5}</string>
-    <key>CPU_GUARD_ACTION_COOLDOWN</key><string>${CPU_GUARD_ACTION_COOLDOWN:-1800}</string>
+    <key>CPU_GUARD_ACTION_COOLDOWN</key><string>${CPU_GUARD_ACTION_COOLDOWN:-21600}</string>
   </dict>
   <key>StandardOutPath</key><string>$LOG_DIR/cpu-guard.out</string>
   <key>StandardErrorPath</key><string>$LOG_DIR/cpu-guard.err</string>
@@ -96,9 +73,16 @@ if [[ -f "$OLD_PLIST" ]]; then
   echo "Removed old broken agent: $OLD_LABEL"
 fi
 
+# The pre-2026-10-17 venv lived in iCloud next to this script; nothing uses it any more.
+if [[ -d "$SCRIPT_DIR/.venv" ]]; then
+  mv "$SCRIPT_DIR/.venv" "$HOME/.Trash/cpu-guard-old-icloud-venv-$(date +%s)" 2>/dev/null && echo "Moved the old in-iCloud venv to the Trash"
+fi
+
 echo
 echo "Installed $LABEL"
 echo "  Script: $INSTALL_SCRIPT"
 echo "  Plist:  $PLIST"
 echo "  Logs:   $LOG_DIR/cpu-guard.out and $LOG_DIR/cpu-guard.err"
-echo "  Mode:   ${CPU_GUARD_ACTION:-kill}; notifications: ${CPU_GUARD_NOTIFY_EVENTS:-action,error}"
+echo "  Mode:   ${CPU_GUARD_ACTION:-notify} (flags a process after ${CPU_GUARD_CPU_LIMIT:-100}% of one core for ${CPU_GUARD_DURATION:-7200}s); notifications: ${CPU_GUARD_NOTIFY_EVENTS:-action,error}"
+echo "  Report + Notify/Kill toggle: cpu-guard-report.sh (also pops up by itself every 50th notification)"
+echo "  A mode chosen in that popup is saved in ~/.config/cpu-guard/config.json and wins over these defaults."

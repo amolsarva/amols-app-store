@@ -20,6 +20,24 @@
     "short": "Native Sengled light controls",
     "long": "Sunlight: power, brightness, colors, dedicated white, warm startup and on-device daylight automation, with private recovery backups."
   },
+  "installs": [
+    {
+      "id": "sunlight-app",
+      "what": "Sunlight.app built into ~/Library/Caches/sunlight-build (sunlight/dist/Sunlight.app links to it)",
+      "present": [
+        "path:~/Library/Caches/sunlight-build/Sunlight.app"
+      ],
+      "sources": [
+        "Sources",
+        "Package.swift",
+        "Info.plist",
+        "Resources",
+        "build.sh"
+      ],
+      "update": "build.sh",
+      "auto": true
+    }
+  ],
   "store_path": "sunlight/",
   "added": "2026-09-24"
 }

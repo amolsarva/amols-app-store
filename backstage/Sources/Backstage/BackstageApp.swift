@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct BackstageApp: App {
     @StateObject private var store = JobStore()
+    @StateObject private var updater = Updater()
 
     init() {
         // `Backstage --setup` prints the new-Mac checklist (from setup.json) and exits.
@@ -11,6 +12,13 @@ struct BackstageApp: App {
             for i in (try? JSONDecoder().decode([SetupItem].self, from: data)) ?? [] {
                 print("[\(SetupChecker.check(i.check) ? " ok " : "TODO")] \(i.name)\(i.isOptional ? " (optional)" : "") - \(i.group)")
             }
+            exit(0)
+        }
+        // `Backstage --update-status` shows what the updater compares (build stamp vs newest source file).
+        if CommandLine.arguments.contains("--update-status") {
+            print("built from source stamp: \(Updater.builtStamp)")
+            print("newest source stamp:     \(Updater.newestSourceStamp()) in \(Updater.sourceDir)")
+            print("manifest:                \(Updater.manifestURL)")
             exit(0)
         }
         // `Backstage --report` prints a plain-text health report and exits (useful for AIs and terminals).
@@ -26,11 +34,11 @@ struct BackstageApp: App {
 
     var body: some Scene {
         Window("Backstage", id: "dashboard") {
-            DashboardView().environmentObject(store)
+            DashboardView().environmentObject(store).environmentObject(updater)
         }
 
         MenuBarExtra {
-            MenuBarView().environmentObject(store)
+            MenuBarView().environmentObject(store).environmentObject(updater)
         } label: {
             let health = store.worstHealth
             if store.problemCount > 0 {

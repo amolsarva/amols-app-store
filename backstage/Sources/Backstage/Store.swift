@@ -17,7 +17,16 @@ final class JobStore: ObservableObject {
     @Published var scriptEntries: [String: ScriptEntry] = [:]
     @Published var runHistory: [RunRecord] = []
     @Published var discovering = false
-    @Published var searchRoots: [String] = ScriptFinder.defaultRoots
+    @Published var searchRoots: [String] = UserDefaults.standard.stringArray(forKey: "searchRoots") ?? ScriptFinder.defaultRoots {
+        didSet { UserDefaults.standard.set(searchRoots, forKey: "searchRoots") }
+    }
+    @Published var discovered: [ScriptItem] = []
+    @Published var lastDiscovery: Date? = nil
+    @Published var lastDiscoveryInfo: ScriptFinder.ScanResult? = nil
+
+    // Recipes ("re-flash the bulb": replay a set of setup/script steps in order)
+    @Published var recipes: [Recipe] = []
+    @Published var recipeRuns: [RecipeRun] = []
 
     // New-Mac setup checklist
     @Published var setupItems: [SetupItem] = []
@@ -37,6 +46,7 @@ final class JobStore: ObservableObject {
         loadNotes()
         loadScripts()
         loadSetup()
+        loadRecipes()
         refresh()
         rebuildScripts()
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
@@ -143,21 +153,40 @@ final class JobStore: ObservableObject {
         }
     }
 
+    /// Scripts that launchd/cron jobs run, so background jobs show up in discovery too.
+    private var jobScriptPaths: [String] {
+        let exts = ScriptFinder.extensions
+        return jobs.flatMap { $0.program }.map { ($0 as NSString).expandingTildeInPath }
+            .filter { $0.hasPrefix("/") && exts.contains(($0 as NSString).pathExtension.lowercased()) }
+    }
+
     /// Walk the search roots for scripts on this Mac (the "find my scripts" feature).
-    func discover(completion: @escaping ([ScriptItem]) -> Void) {
+    /// Results are kept in the store so they survive switching sidebar items.
+    func discover() {
         guard !discovering else { return }
         discovering = true
         let roots = searchRoots
         let entries = scriptEntries
+        let extra = jobScriptPaths
         Task.detached(priority: .utility) {
-            let paths = ScriptFinder.scan(roots: roots)
-            let items = paths.map { ScriptFinder.item(for: $0, entry: entries[$0], lastRun: nil) }
+            let result = ScriptFinder.scan(roots: roots, extra: extra)
+            let items = result.paths.map { ScriptFinder.item(for: $0, entry: entries[$0], lastRun: nil, summarize: false) }
                 .sorted { ($0.modified ?? .distantPast) > ($1.modified ?? .distantPast) }
             await MainActor.run {
                 self.discovering = false
-                completion(items)
+                self.discovered = items
+                self.lastDiscovery = Date()
+                self.lastDiscoveryInfo = result
             }
         }
+    }
+
+    func trackAll(_ items: [ScriptItem]) {
+        for i in items where scriptEntries[i.path] == nil {
+            scriptEntries[i.path] = ScriptEntry(path: i.path, name: i.name, whatItDoes: i.autoSummary)
+        }
+        persistScripts()
+        rebuildScripts()
     }
 
     func track(_ item: ScriptItem, on: Bool = true) {

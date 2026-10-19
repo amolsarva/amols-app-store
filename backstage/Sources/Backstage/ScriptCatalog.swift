@@ -47,8 +47,10 @@ struct ScriptEntry: Codable, Hashable {
     var repairArgs: String? = nil
     /// Optional .app to open for Launch (falls back to running the script).
     var launchApp: String? = nil
+    /// Status page (file path or http URL) opened in Safari by the Monitor button.
+    var monitor: String? = nil
 
-    var hasModes: Bool { launchArgs != nil || installArgs != nil || repairArgs != nil || launchApp != nil }
+    var hasModes: Bool { launchArgs != nil || installArgs != nil || repairArgs != nil || launchApp != nil || monitor != nil }
 }
 
 struct RunRecord: Codable, Hashable, Identifiable {
@@ -101,29 +103,59 @@ enum ScriptFinder {
          Scanner.home + "/bin",
          Scanner.home + "/.local/bin",
          Scanner.home + "/Library/Scripts",
-         Scanner.home + "/Desktop"]
+         Scanner.home + "/Library/Application Scripts",
+         Scanner.home + "/Developer",
+         Scanner.home + "/Projects",
+         Scanner.home + "/scripts",
+         Scanner.home + "/Desktop",
+         Scanner.home + "/Downloads",
+         "/usr/local/bin"]
     }
 
-    /// Walk the roots looking for script files. Cheap enough to run on demand; capped for safety.
-    static func scan(roots: [String], limit: Int = 4000) -> [String] {
-        var found: [String] = []
+    struct ScanResult {
+        var paths: [String] = []
+        var rootsScanned = 0
+        var rootsMissing: [String] = []
+        var truncated = false
+    }
+
+    /// True for extensionless executables that start with a "#!" line.
+    static func hasShebang(_ path: String) -> Bool {
+        guard let h = FileHandle(forReadingAtPath: path) else { return false }
+        defer { try? h.close() }
+        return ((try? h.read(upToCount: 2)) ?? Data()) == Data("#!".utf8)
+    }
+
+    /// Walk the roots looking for script files. Also picks up extensionless executables with a shebang
+    /// and scripts that background jobs (launchd / cron) point at. Capped for safety.
+    static func scan(roots: [String], extra: [String] = [], limit: Int = 10000) -> ScanResult {
+        var result = ScanResult()
+        var seen = Set<String>()
         let fm = FileManager.default
-        for root in roots {
-            guard fm.fileExists(atPath: root) else { continue }
-            guard let en = fm.enumerator(atPath: root) else { continue }
+        func add(_ p: String) { if seen.insert(p).inserted { result.paths.append(p) } }
+        outer: for root in roots {
+            var isDir: ObjCBool = false
+            guard fm.fileExists(atPath: root, isDirectory: &isDir), isDir.boolValue,
+                  let en = fm.enumerator(atPath: root) else { result.rootsMissing.append(root); continue }
+            result.rootsScanned += 1
             while let rel = en.nextObject() as? String {
-                if found.count >= limit { break }
+                if result.paths.count >= limit { result.truncated = true; break outer }
                 let last = (rel as NSString).lastPathComponent
                 if skipDirs.contains(last) || last.hasPrefix(".") && last != ".local" {
                     en.skipDescendants(); continue
                 }
-                if en.level > 6 { en.skipDescendants(); continue }
+                if en.level > 8 { en.skipDescendants(); continue }
+                let full = root + "/" + rel
                 let ext = (rel as NSString).pathExtension.lowercased()
-                guard extensions.contains(ext) else { continue }
-                found.append(root + "/" + rel)
+                if extensions.contains(ext) { add(full); continue }
+                if ext.isEmpty, fm.isExecutableFile(atPath: full),
+                   let attrs = try? fm.attributesOfItem(atPath: full),
+                   attrs[.type] as? FileAttributeType == .typeRegular,
+                   (attrs[.size] as? Int ?? 0) < 1_000_000, hasShebang(full) { add(full) }
             }
         }
-        return found
+        for p in extra where fm.fileExists(atPath: p) { add(p) }
+        return result
     }
 
     /// First comment block after the shebang, used as an automatic description.
@@ -153,14 +185,14 @@ enum ScriptFinder {
         return lines.joined(separator: " ")
     }
 
-    static func item(for path: String, entry: ScriptEntry?, lastRun: RunRecord?) -> ScriptItem {
+    static func item(for path: String, entry: ScriptEntry?, lastRun: RunRecord?, summarize summarizeIt: Bool = true) -> ScriptItem {
         let attrs = try? FileManager.default.attributesOfItem(atPath: path)
         return ScriptItem(path: path,
                           name: (path as NSString).lastPathComponent,
                           kind: ScriptKind.infer(from: path),
                           modified: attrs?[.modificationDate] as? Date,
                           executable: FileManager.default.isExecutableFile(atPath: path),
-                          autoSummary: summarize(path),
+                          autoSummary: summarizeIt ? summarize(path) : "",
                           entry: entry,
                           lastRun: lastRun)
     }

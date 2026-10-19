@@ -6,6 +6,13 @@
     "long": "Converts the .abbu backup that Apple Contacts creates into a plain CSV spreadsheet — readable in Excel, importable anywhere, and not locked inside Apple's format.",
     "status": "public"
   },
+  "always-on": {
+    "entry": "always-on.sh",
+    "icon": "🖥️",
+    "short": "Run this Mac as an agent server",
+    "long": "Installs deps (brew, tmux, node, Claude Code, Codex), sets power to never sleep and auto-restart, guides auto-login, and installs a KeepAlive LaunchAgent supervising Claude and Codex sessions.",
+    "status": "review"
+  },
   "backstage": {
     "entry": "build.sh",
     "icon": "🎛️",
@@ -63,7 +70,7 @@
     "status": "public"
   },
   "gmail-attachment-wingman-extension": {
-    "entry": "",
+    "entry": "run.sh",
     "icon": "📎",
     "short": "Grabs attachments out of Gmail in bulk so you're not saving ",
     "long": "Grabs attachments out of Gmail in bulk so you're not saving them one click at a time.",
@@ -98,10 +105,10 @@
     "status": "public"
   },
   "mac-scripts-launcher": {
-    "entry": "launcher.py",
+    "entry": "build_app.sh",
     "icon": "🚀",
-    "short": "A native-feeling little app to browse and launch everything ",
-    "long": "A native-feeling little app to browse and launch everything in this collection from one window.",
+    "short": "Install the launcher as a Mac app",
+    "long": "Builds Mac Scripts Launcher.app: browse and launch everything in this collection from one window. Runs the launcher straight from this folder, so it is never stale.",
     "status": "public"
   },
   "meet-tab-sidecar-extension": {
@@ -130,6 +137,13 @@
     "icon": "📊",
     "short": "Analyze your contacts & relationships",
     "long": "Reads your Contacts database and produces stats about your network — who you have info on, gaps in your address book, duplicates, and missing emails or phone numbers.",
+    "status": "public"
+  },
+  "python-guard": {
+    "entry": "run.sh",
+    "icon": "🐍",
+    "short": "Keep Python + Tk working after Homebrew upgrades",
+    "long": "doctor: what's installed and what's broken · ensure: fix it now · install: also watch for Homebrew upgrades and fix automatically.",
     "status": "public"
   },
   "rescue-hq": {
@@ -215,12 +229,5 @@
     "short": "Screenshots to clipboard instantly, filed to iCloud",
     "long": "Every screenshot is on your clipboard the instant you take it, and filed into iCloud › Desktop › Screenshots for later review.",
     "status": "public"
-  },
-  "codex-openclaw-simulator": {
-    "entry": "run.sh",
-    "icon": "🌉",
-    "short": "Duplicate of ~/Documents/root/message-bridge (identical src/",
-    "long": "Duplicate of ~/Documents/root/message-bridge (identical src/). Kept on disk, never published.",
-    "status": "private"
   }
 }

@@ -12,14 +12,10 @@ if ! command -v pdftotext &>/dev/null; then
     brew install poppler
 fi
 
-# Check if Python3 is installed
-if ! command -v python3 &>/dev/null; then
-    echo "Installing Python3..."
-    brew install python
-fi
-
-# Install required Python packages
-python3 -m pip install --user pandas openpyxl
+# Python + pandas/openpyxl: a private venv managed by python-guard (Homebrew's Python refuses
+# `pip install --user`, and the venv is rebuilt automatically after Python upgrades).
+PY="$(/bin/bash "$(cd "$(dirname "$0")" && pwd)/../python-guard/pyenv.sh" venv pdf-to-xls --pkg pandas --pkg openpyxl)" || {
+  echo "Could not set up Python (see ../python-guard/run.sh doctor)"; exit 1; }
 
 # Check input arguments
 if [ "$#" -ne 2 ]; then
@@ -34,7 +30,7 @@ OUTPUT_XLSX=$2
 pdftotext "$INPUT_PDF" temp.txt
 
 # Convert text to XLSX using Python
-python3 - <<EOF
+"$PY" - <<EOF
 import pandas as pd
 
 # Read extracted text

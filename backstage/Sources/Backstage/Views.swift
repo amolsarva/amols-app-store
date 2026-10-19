@@ -19,6 +19,8 @@ enum Selection: Hashable {
     case discover
     case script(String)
     case job(String)
+    case recipes
+    case recipe(String)
 }
 
 // MARK: - Dashboard
@@ -50,6 +52,7 @@ struct DashboardView: View {
                 Label(store.missingRequiredCount > 0 ? "New Mac setup (\(store.missingRequiredCount) to do)" : "New Mac setup",
                       systemImage: "checklist").tag(Selection.setup)
                 Label("Find scripts on this Mac", systemImage: "magnifyingglass").tag(Selection.discover)
+                Label("Recipes", systemImage: "list.bullet.clipboard").tag(Selection.recipes)
 
                 Section("My scripts") {
                     if filteredScripts.isEmpty {
@@ -74,6 +77,7 @@ struct DashboardView: View {
             .navigationSplitViewColumnWidth(min: 280, ideal: 330)
             .safeAreaInset(edge: .bottom) {
                 VStack(alignment: .leading, spacing: 4) {
+                    UpdateBar()
                     Toggle("Show vendor & system jobs", isOn: $store.showVendor)
                     Text(store.scanning ? "Scanning…" : "Jobs scanned \(relative(store.lastScan))")
                         .font(.caption).foregroundStyle(.secondary)
@@ -84,6 +88,11 @@ struct DashboardView: View {
             switch selection {
             case .setup: SetupView(select: { selection = $0 })
             case .discover: DiscoverView()
+            case .recipes: RecipesListView(select: { selection = $0 })
+            case .recipe(let id):
+                if let r = store.recipes.first(where: { $0.id == id }) {
+                    RecipeDetailView(recipeID: r.id).id(id)
+                } else { ContentUnavailableView("Recipe not found", systemImage: "questionmark.folder") }
             case .script(let path):
                 if let item = store.scripts.first(where: { $0.path == path }) {
                     ScriptDetailView(item: item).id(path)
@@ -96,7 +105,12 @@ struct DashboardView: View {
             }
         }
         .toolbar {
-            ToolbarItem { Button { store.refresh(); store.rebuildScripts() } label: { Label("Refresh", systemImage: "arrow.clockwise") } }
+            ToolbarItemGroup {
+                Button { selection = .discover; store.discover() } label: { Label("Find scripts", systemImage: "magnifyingglass") }
+                    .help("Scan this Mac for scripts")
+                Button { store.refresh(); store.rebuildScripts() } label: { Label("Refresh", systemImage: "arrow.clockwise") }
+                    .help("Rescan background jobs and reload scripts")
+            }
         }
         .frame(minWidth: 940, minHeight: 600)
         .onReceive(store.$pendingSelection.compactMap { $0 }) { sel in
@@ -259,6 +273,18 @@ struct ScriptDetailView: View {
         start("Launch", entry.launchArgs ?? args)
     }
 
+    func openMonitor() {
+        guard let m = entry.monitor, !m.isEmpty else { return }
+        let url = m.hasPrefix("http") ? URL(string: m)
+                                      : URL(fileURLWithPath: PortablePath.expand((m as NSString).expandingTildeInPath))
+        guard let url else { return }
+        if let safari = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Safari") {
+            NSWorkspace.shared.open([url], withApplicationAt: safari, configuration: NSWorkspace.OpenConfiguration())
+        } else {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
     var actionsBox: some View {
         let legacy = !entry.hasModes
         let canLaunch = legacy || entry.launchArgs != nil || entry.launchApp != nil
@@ -269,6 +295,11 @@ struct ScriptDetailView: View {
                 actionButton("Launch", symbol: "play.fill",
                              detail: legacy ? "Run this tool now." : "Open or run the tool now.",
                              enabled: canLaunch && !runner.running) { launch() }
+                if let m = entry.monitor, !m.isEmpty {
+                    actionButton("Monitor", symbol: "chart.line.uptrend.xyaxis",
+                                 detail: "Open the live status page in Safari (refreshes itself).",
+                                 enabled: true) { openMonitor() }
+                }
                 actionButton("Install", symbol: "arrow.down.circle.fill",
                              detail: "Set it up on this Mac: background job, hooks, helper files.",
                              enabled: canInstall && !runner.running) {
@@ -385,6 +416,8 @@ struct ScriptDetailView: View {
                     modeEditor("Launch", $entry.launchArgs, hint: "e.g. open")
                     modeEditor("Install", $entry.installArgs, hint: "e.g. install")
                     modeEditor("Repair", $entry.repairArgs, hint: "e.g. doctor or --fix")
+                    TextField("Status page for Monitor (optional: file path or https:// URL)",
+                              text: Binding(get: { entry.monitor ?? "" }, set: { entry.monitor = $0.isEmpty ? nil : $0 }))
                     TextField("App to open for Launch (optional, e.g. ~/Applications/Sunlight.app)",
                               text: Binding(get: { entry.launchApp ?? "" }, set: { entry.launchApp = $0.isEmpty ? nil : $0 }))
                     HStack {
@@ -440,81 +473,176 @@ struct ScriptDetailView: View {
 }
 
 struct DiscoverView: View {
+    enum Sort: String, CaseIterable { case recent = "Recently changed", name = "Name", folder = "Folder" }
+
     @EnvironmentObject var store: JobStore
-    @State private var results: [ScriptItem] = []
     @State private var filter = ""
     @State private var onlyUntracked = false
+    @State private var kind: ScriptKind? = nil
+    @State private var sort: Sort = .recent
+    @State private var showRoots = true
 
     var shown: [ScriptItem] {
-        results.filter { r in
+        let r = store.discovered.filter { r in
             (filter.isEmpty || r.path.localizedCaseInsensitiveContains(filter)
                 || r.summary.localizedCaseInsensitiveContains(filter))
             && (!onlyUntracked || store.scriptEntries[r.path] == nil)
+            && (kind == nil || r.kind == kind)
+        }
+        switch sort {
+        case .recent: return r
+        case .name: return r.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        case .folder: return r.sorted { $0.folder.localizedCaseInsensitiveCompare($1.folder) == .orderedAscending }
         }
     }
+
+    var kinds: [ScriptKind] { Array(Set(store.discovered.map(\.kind))).sorted { $0.rawValue < $1.rawValue } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Find scripts on this Mac").font(.title2.bold())
-            Text("Backstage looks for .sh, .command, .py, .mjs, .applescript, .swift and .rb files in these folders, skipping node_modules, .git and build folders. Add the ones you want to keep on hand.")
+            HStack(alignment: .firstTextBaseline) {
+                Text("Find scripts on this Mac").font(.title2.bold())
+                Spacer()
+                Button { store.discover() } label: {
+                    Label(store.discovering ? "Scanning…" : (store.lastDiscovery == nil ? "Scan now" : "Rescan"),
+                          systemImage: "magnifyingglass")
+                }
+                .buttonStyle(.borderedProminent).controlSize(.large)
+                .disabled(store.discovering)
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+            }
+            Text("Looks for .sh, .command, .py, .js, .applescript, .swift and .rb files, plus executables with a #! line and scripts your background jobs run. Skips node_modules, .git and build folders.")
                 .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
 
-            ForEach(store.searchRoots, id: \.self) { root in
-                HStack {
-                    Image(systemName: "folder").foregroundStyle(.secondary)
-                    Text(root.replacingOccurrences(of: Scanner.home, with: "~")).font(.callout.monospaced())
-                    Spacer()
-                    Button("Remove") { store.searchRoots.removeAll { $0 == root } }.controlSize(.small)
-                }
-            }
-            HStack {
-                Button("Add folder…") { addFolder() }
-                Button(store.discovering ? "Scanning…" : "Scan now") {
-                    store.discover { results = $0 }
-                }.disabled(store.discovering)
-                if store.discovering { ProgressView().controlSize(.small) }
-                Spacer()
-                Toggle("Only ones I haven't added", isOn: $onlyUntracked)
-            }
-            TextField("Filter results", text: $filter)
-
-            if results.isEmpty {
-                ContentUnavailableView("No scan yet", systemImage: "magnifyingglass",
-                                       description: Text("Press “Scan now” to look for scripts."))
-                    .frame(maxHeight: .infinity)
-            } else {
-                Text("\(shown.count) scripts").font(.caption).foregroundStyle(.secondary)
-                List { ForEach(shown) { s in
-                    HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(s.name).font(.body.weight(.medium))
-                            Text(s.folder).font(.caption.monospaced()).foregroundStyle(.secondary)
-                            if !s.autoSummary.isEmpty {
-                                Text(s.autoSummary).font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                            }
-                        }
-                        Spacer()
-                        Text(relative(s.modified)).font(.caption).foregroundStyle(.tertiary)
-                        if store.scriptEntries[s.path] != nil {
-                            Text("added").font(.caption).foregroundStyle(.green)
-                        } else {
-                            Button("Add") { store.track(s) }
+            DisclosureGroup(isExpanded: $showRoots) {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(store.searchRoots, id: \.self) { root in
+                        HStack {
+                            let exists = FileManager.default.fileExists(atPath: root)
+                            Image(systemName: exists ? "folder" : "folder.badge.questionmark")
+                                .foregroundStyle(exists ? Color.secondary : Color.orange)
+                            Text(root.replacingOccurrences(of: Scanner.home, with: "~")).font(.callout.monospaced())
+                            if !exists { Text("not found").font(.caption).foregroundStyle(.orange) }
+                            Spacer()
+                            Button("Reveal") { store.reveal(root) }.controlSize(.small).disabled(!exists)
+                            Button("Remove") { store.searchRoots.removeAll { $0 == root } }.controlSize(.small)
                         }
                     }
-                    .padding(.vertical, 2)
-                } }
+                    HStack {
+                        Button("Add folder…") { addFolder() }
+                        Button("Reset to defaults") { store.searchRoots = ScriptFinder.defaultRoots }
+                    }.padding(.top, 4)
+                }.padding(.top, 4)
+            } label: {
+                Text("Folders searched (\(store.searchRoots.count))").font(.headline)
+            }
+
+            if store.discovering {
+                HStack { ProgressView().controlSize(.small); Text("Scanning \(store.searchRoots.count) folders…").foregroundStyle(.secondary) }
+            }
+
+            if store.lastDiscovery == nil && !store.discovering {
+                ContentUnavailableView {
+                    Label("No scan yet", systemImage: "magnifyingglass")
+                } description: {
+                    Text("Scan the folders above to find scripts you can add to Backstage.")
+                } actions: {
+                    Button("Scan now") { store.discover() }.buttonStyle(.borderedProminent)
+                    Button("Add folder…") { addFolder() }
+                }
+                .frame(maxHeight: .infinity)
+            } else if store.lastDiscovery != nil {
+                HStack {
+                    TextField("Filter results", text: $filter).textFieldStyle(.roundedBorder)
+                    Picker("Type", selection: $kind) {
+                        Text("All types").tag(ScriptKind?.none)
+                        ForEach(kinds, id: \.self) { Text($0.label).tag(ScriptKind?.some($0)) }
+                    }.frame(width: 130).labelsHidden()
+                    Picker("Sort", selection: $sort) {
+                        ForEach(Sort.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    }.frame(width: 160).labelsHidden()
+                }
+                HStack {
+                    Toggle("Only ones I haven't added", isOn: $onlyUntracked)
+                    Spacer()
+                    let addable = shown.filter { store.scriptEntries[$0.path] == nil }
+                    Button("Add all \(addable.count) shown") { store.trackAll(addable) }
+                        .disabled(addable.isEmpty)
+                }
+                HStack {
+                    Text(summaryLine).font(.caption).foregroundStyle(.secondary)
+                    if let info = store.lastDiscoveryInfo, info.truncated {
+                        Text("Stopped at the scan limit; remove a broad folder to see everything.")
+                            .font(.caption).foregroundStyle(.orange)
+                    }
+                }
+                if shown.isEmpty {
+                    ContentUnavailableView("No matching scripts", systemImage: "doc.questionmark",
+                                           description: Text("Try clearing the filter, or add another folder."))
+                        .frame(maxHeight: .infinity)
+                } else {
+                    List { ForEach(shown) { s in row(s) } }
+                }
             }
         }
         .padding(24)
+        .onAppear { if store.lastDiscovery == nil { store.discover() } }
     }
+
+    var summaryLine: String {
+        var t = "\(shown.count) of \(store.discovered.count) scripts"
+        if let d = store.lastDiscovery { t += " · scanned \(relative(d))" }
+        if let m = store.lastDiscoveryInfo?.rootsMissing, !m.isEmpty { t += " · \(m.count) folder(s) not found" }
+        return t
+    }
+
+    func row(_ s: ScriptItem) -> some View { DiscoverRow(s: s) }
 
     func addFolder() {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        if panel.runModal() == .OK, let url = panel.url {
-            if !store.searchRoots.contains(url.path) { store.searchRoots.append(url.path) }
+        panel.allowsMultipleSelection = true
+        if panel.runModal() == .OK {
+            for url in panel.urls where !store.searchRoots.contains(url.path) { store.searchRoots.append(url.path) }
+            store.discover()
+        }
+    }
+}
+
+struct DiscoverRow: View {
+    @EnvironmentObject var store: JobStore
+    let s: ScriptItem
+    @State private var summary = ""
+
+    var body: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(s.name).font(.body.weight(.medium))
+                    Text(s.kind.label).font(.caption2).padding(.horizontal, 5)
+                        .background(.quaternary, in: Capsule())
+                }
+                Text(s.folder).font(.caption.monospaced()).foregroundStyle(.secondary)
+                if !summary.isEmpty {
+                    Text(summary).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                }
+            }
+            Spacer()
+            Text(relative(s.modified)).font(.caption).foregroundStyle(.tertiary)
+            Button("Reveal") { store.reveal(s.path) }.controlSize(.small)
+            if store.scriptEntries[s.path] != nil {
+                Button("Open") { store.pendingSelection = .script(s.path) }.controlSize(.small)
+                Text("added").font(.caption).foregroundStyle(.green)
+            } else {
+                Button("Add") { store.track(s) }.buttonStyle(.borderedProminent).controlSize(.small)
+            }
+        }
+        .padding(.vertical, 2)
+        // Read the file header only for rows actually on screen.
+        .task(id: s.path) {
+            let path = s.path
+            summary = await Task.detached(priority: .utility) { ScriptFinder.summarize(path) }.value
         }
     }
 }
@@ -906,6 +1034,33 @@ struct SetupRow: View {
                 ProgressView().controlSize(.small)
             } else if st != .ok, item.fix != nil {
                 Button("Fix") { store.fix(item) }.disabled(store.setupBusy != nil)
+            }
+        }
+    }
+}
+
+
+// MARK: - Updates
+
+struct UpdateBar: View {
+    @EnvironmentObject var updater: Updater
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let u = updater.available {
+                Label("Update available: \(u.description)", systemImage: "arrow.down.circle.fill")
+                    .font(.caption.weight(.medium)).foregroundStyle(.blue)
+                Button(updater.busy ? "Updating…" : "Update now") { updater.install(u) }
+                    .buttonStyle(.borderedProminent).controlSize(.small).disabled(updater.busy)
+            }
+            if !updater.status.isEmpty {
+                Text(updater.status).font(.caption2).foregroundStyle(.secondary).lineLimit(3)
+            }
+            HStack {
+                Button("Check for updates") { updater.check(manual: true) }
+                    .controlSize(.small).disabled(updater.busy)
+                Toggle("Auto", isOn: $updater.autoCheck).toggleStyle(.checkbox).controlSize(.small)
+                    .help("Check in the background every few hours")
             }
         }
     }

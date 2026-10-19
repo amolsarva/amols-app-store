@@ -14,10 +14,27 @@
   "summary": "A native-feeling little app to browse and launch everything in this collection from one window.",
   "story": "",
   "launcher": {
-    "entry": "launcher.py",
-    "short": "A native-feeling little app to browse and launch everything ",
-    "long": "A native-feeling little app to browse and launch everything in this collection from one window."
+    "entry": "build_app.sh",
+    "short": "Install the launcher as a Mac app",
+    "long": "Builds Mac Scripts Launcher.app: browse and launch everything in this collection from one window. Runs the launcher straight from this folder, so it is never stale."
   },
+  "installs": [
+    {
+      "id": "mac-scripts-launcher-app",
+      "what": "Mac Scripts Launcher.app in /Applications or ~/Applications (stub + fallback copy of launcher.py)",
+      "present": [
+        "path:/Applications/Mac Scripts Launcher.app",
+        "path:~/Applications/Mac Scripts Launcher.app"
+      ],
+      "sources": [
+        "build_app.sh",
+        "../supporting-files/launcher.py",
+        "../python-guard/pyenv.sh"
+      ],
+      "update": "build_app.sh --no-launch",
+      "auto": true
+    }
+  ],
   "store_path": "mac-scripts-launcher/",
   "added": "2026-05-01"
 }

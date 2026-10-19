@@ -153,16 +153,22 @@
     "store_path": "screenshot-mover/install.sh",
     "added": "2026-05-01",
     "folder": "screenshot-mover",
-    "repoUrl": "https://github.com/amolsarva/screenshot-mover"
-  },
-  {
-    "folder": "codex-openclaw-simulator",
-    "name": "codex-openclaw-simulator",
-    "icon": "🌉",
-    "status": "private",
-    "section": "Other",
-    "summary": "Duplicate of ~/Documents/root/message-bridge (identical src/). Kept on disk, never published.",
-    "added": "2026-05-01",
-    "kind": "local-only"
+    "repoUrl": "https://github.com/amolsarva/screenshot-mover",
+    "installs": [
+      {
+        "id": "screenshot-mover-app",
+        "what": "~/Applications/Screenshot Mover.app + LaunchAgent com.amol.screenshot-mover",
+        "present": [
+          "agent:com.amol.screenshot-mover"
+        ],
+        "sources": [
+          "ScreenshotMover.swift",
+          "install.sh"
+        ],
+        "update": "install.sh",
+        "auto": true,
+        "first_run": "record"
+      }
+    ]
   }
 ]

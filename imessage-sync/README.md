@@ -63,6 +63,12 @@ a while if you have years of photos. Nightly runs are time-boxed to 40 minutes o
 
 Paths are relative to the archive's parent folder. `{python}` is the Python running the sync.
 
+Optional, per archive (not in this repo):
+- `_sync/icloud_paths.txt`: extra folders (one per line, `~` allowed) the job runs `brctl download` on
+  before each sync; the archive's parent folder is always included.
+- `_sync/post_run.py`: a hook the job runs after every sync with `SYNC_RC`, `BRCTL_STATUS`,
+  `IMESSAGE_SYNC_SCRIPT` and `IMESSAGE_SYNC_ARCHIVE` set. Its failures are logged and ignored.
+
 ## Privacy
 
 Nothing leaves your Mac except through your own iCloud Drive, if the archive sits there.

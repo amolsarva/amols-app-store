@@ -1,0 +1,30 @@
+{
+  "name": "Python Guard",
+  "icon": "🐍",
+  "section": "Keeping the machine healthy",
+  "kind": "mac-script",
+  "status": "public",
+  "featured": false,
+  "category": "mac-tool",
+  "tags": ["mac-tool", "python", "homebrew", "self-healing"],
+  "color": "linear-gradient(135deg,#1e3a8a,#facc15)",
+  "summary": "Keeps Python working on your Mac through every Homebrew upgrade: installs the matching Tk, rebuilds tool environments for the new version, and heals itself the moment Homebrew changes Python.",
+  "story": "Every Homebrew Python upgrade quietly breaks something: Tk apps stop opening, private environments point at a Python that no longer exists, and `pip install` is refused outright. Python Guard is the one place every tool in this collection asks for Python. It finds the best interpreter, installs `python-tk` for whatever version Homebrew just switched to, rebuilds each tool's private environment on the new version, and runs again automatically whenever Homebrew relinks python3.",
+  "launcher": {
+    "entry": "run.sh",
+    "short": "Keep Python + Tk working after Homebrew upgrades",
+    "long": "doctor: what's installed and what's broken · ensure: fix it now · install: also watch for Homebrew upgrades and fix automatically."
+  },
+  "installs": [
+    {
+      "id": "python-guard-agent",
+      "what": "LaunchAgent com.amol.python-guard running a copy of pyenv.sh from ~/Library/Application Support/python-guard",
+      "present": ["agent:com.amol.python-guard"],
+      "sources": ["pyenv.sh"],
+      "update": "run.sh install",
+      "auto": true
+    }
+  ],
+  "store_path": "python-guard/",
+  "added": "2026-10-17"
+}

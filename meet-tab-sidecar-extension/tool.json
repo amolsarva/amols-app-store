@@ -21,6 +21,24 @@
     "short": "Chrome extension for joining a Meet while a sidecar tab hand",
     "long": "Chrome extension for joining a Meet while a sidecar tab handles audio, intros, or presentation work."
   },
+  "artifacts": [
+    {
+      "id": "meet-tab-sidecar-zip",
+      "what": "the zip the App Store's Get button downloads",
+      "sources": [
+        "manifest.json",
+        "*.js",
+        "*.html",
+        "*.css"
+      ],
+      "build": "package-extension.sh",
+      "outputs": [
+        "../downloads/meet-tab-sidecar-extension.zip"
+      ],
+      "site": "downloads/meet-tab-sidecar-extension.zip",
+      "needs_mac": false
+    }
+  ],
   "store_path": "downloads/meet-tab-sidecar-extension.zip",
   "added": "2026-05-01"
 }
