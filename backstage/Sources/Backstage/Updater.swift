@@ -26,6 +26,8 @@ final class Updater: ObservableObject {
 
     @Published var available: Update?
     @Published var status = ""
+    /// Set when an update attempt failed, so the bar can show `status` as an error rather than a grey aside.
+    @Published var failed = false
     @Published var busy = false
     @Published var autoCheck: Bool = UserDefaults.standard.object(forKey: "autoUpdate") as? Bool ?? true {
         didSet { UserDefaults.standard.set(autoCheck, forKey: "autoUpdate") }
@@ -64,7 +66,7 @@ final class Updater: ObservableObject {
         // Dev builds (`swift run`) have no stamp; nothing to compare against.
         let built = Self.builtStamp
         Task {
-            if manual { status = "Checking…" }
+            if manual { status = "Checking…"; failed = false }
             // 1. local source folder
             let src = await Task.detached { Self.newestSourceStamp() }.value
             if built > 0, src > built {
@@ -99,6 +101,7 @@ final class Updater: ObservableObject {
     func install(_ u: Update) {
         guard !busy else { return }
         busy = true
+        failed = false
         status = "Updating…"
         Task {
             do {
@@ -110,7 +113,8 @@ final class Updater: ObservableObject {
                 Self.relaunch()
             } catch {
                 busy = false
-                status = "Update failed: \(error.localizedDescription)"
+                failed = true
+                status = error.localizedDescription
             }
         }
     }
@@ -142,7 +146,21 @@ final class Updater: ObservableObject {
         guard FileManager.default.fileExists(atPath: "/usr/bin/swift") else {
             throw UpdateError(errorDescription: "Swift isn't installed (run xcode-select --install).")
         }
+        if let blocked = appOwnershipProblem() { throw UpdateError(errorDescription: blocked) }
         try await sh("cd '\(sourceDir)' && ./build.sh")
+    }
+
+    /// Opening the .pkg installer leaves ~/Applications/Backstage.app owned by root, and then build.sh
+    /// can't delete it to put the new one in place. Say so up front instead of after a minute of compiling.
+    static func appOwnershipProblem() -> String? {
+        let app = Scanner.home + "/Applications/Backstage.app"
+        guard let owner = (try? FileManager.default.attributesOfItem(atPath: app))?[.ownerAccountID] as? NSNumber,
+              owner.uint32Value != getuid() else { return nil }
+        let name = (try? FileManager.default.attributesOfItem(atPath: app))?[.ownerAccountName] as? String ?? "another user"
+        return """
+        Backstage.app is owned by \(name), not you, so the update can't replace it.         Run this once in Terminal, then update again:
+        sudo chown -R "$(whoami)":staff ~/Applications/Backstage.app
+        """
     }
 
     static func installDMG(_ url: URL, sha256: String?) async throws {

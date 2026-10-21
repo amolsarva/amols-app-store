@@ -9,11 +9,19 @@
 # Build products go to ~/Library/Caches (NOT iCloud) so thousands of build files don't sync.
 set -euo pipefail
 cd "$(dirname "$0")"
-VERSION="1.4"
+VERSION="1.5"
 SCRATCH="$HOME/Library/Caches/backstage-build"
 APP="${BACKSTAGE_APP_OVERRIDE:-$HOME/Applications/Backstage.app}"
 # Build number = newest source mtime; the app compares it with the source folder / latest.json to self-update.
 BUILD=$(stat -f %m Package.swift build.sh Sources/Backstage/*.swift | sort -n | tail -1)
+
+# Fail fast, before a minute of compiling: the .pkg installer leaves ~/Applications/Backstage.app
+# owned by root, and then neither build.sh nor the in-app updater can replace it.
+if [[ -e "$APP" && ! -O "$APP" ]]; then
+  echo "$APP is owned by $(stat -f %Su "$APP"), not $(whoami), so the update can't replace it." >&2
+  echo "Run this once in Terminal, then update again:  sudo chown -R \"\$(whoami)\":staff \"$APP\"" >&2
+  exit 1
+fi
 
 echo "==> Compiling"
 swift build -c release --scratch-path "$SCRATCH"

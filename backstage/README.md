@@ -25,3 +25,14 @@ The sidebar's **New Mac setup** screen checks this Mac against `setup.json` (Com
 `setup.json` item types. check: `command`, `app`, `path`, `agent`, `xcode-clt`. fix: `brew`, `script` (path relative to `root/`), `terminal`, `url`, `note`.
 
 `scripts.json` and `run-history.json` now store paths as `~/...`, so they work when usernames differ between Macs (amol vs MrAnonymous).
+
+## When "Update now" does nothing (added 2026-10-21)
+
+If the app bundle is owned by `root` — which is what opening the old `.pkg` installer left behind —
+nothing can replace it, so the update stops before it starts. Backstage now says so in red in the
+update bar (and `build.sh` fails immediately, before compiling) instead of leaving a grey one-liner.
+The one-time fix, from Terminal:
+
+```bash
+sudo chown -R "$(whoami)":staff ~/Applications/Backstage.app
+```

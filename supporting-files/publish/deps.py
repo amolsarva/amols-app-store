@@ -338,10 +338,11 @@ def cmd_status(as_json: bool = False) -> int:
               f"{'built from current source' if r['built'] else 'STALE: source changed since last build'} · {site}")
     print("Repos (tracked changes / unpushed commits)")
     for r in repos:
-        ok = r["dirty"] == 0 and r["ahead"] in ("0",)
+        # the website repo has unrelated hand edits; only unpushed commits there count
+        ok = r["ahead"] == "0" and (r["dirty"] == 0 or r["repo"] == "amolsarva.com")
         print(f"  {'✅' if ok else '⚠️ '} {r['repo']:<28} {r['dirty']} changed · {r['ahead']} unpushed")
     stale = sum(r["stale"] for r in inst) + sum((not r["built"]) or r["site_ok"] is False for r in arts) \
-        + sum(not (r["dirty"] == 0 and r["ahead"] == "0") for r in repos)
+        + sum(not (r["ahead"] == "0" and (r["dirty"] == 0 or r["repo"] == "amolsarva.com")) for r in repos)
     print(f"\n{'Everything current.' if not stale else f'{stale} item(s) not current → supporting-files/publish/release.sh'}")
     return 1 if stale else 0
 

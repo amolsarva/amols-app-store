@@ -1053,7 +1053,20 @@ struct UpdateBar: View {
                 Button(updater.busy ? "Updating…" : "Update now") { updater.install(u) }
                     .buttonStyle(.borderedProminent).controlSize(.small).disabled(updater.busy)
             }
-            if !updater.status.isEmpty {
+            if updater.failed, !updater.status.isEmpty {
+                // A failed update used to read as a grey aside and went unnoticed; it gets the
+                // same weight as the thing it stopped, and stays selectable so a fix can be copied.
+                VStack(alignment: .leading, spacing: 2) {
+                    Label("Update failed", systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption.weight(.semibold))
+                    Text(updater.status).font(.caption).textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .foregroundStyle(.red)
+                .padding(6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.red.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
+            } else if !updater.status.isEmpty {
                 Text(updater.status).font(.caption2).foregroundStyle(.secondary).lineLimit(3)
             }
             HStack {
