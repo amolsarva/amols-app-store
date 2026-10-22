@@ -157,7 +157,7 @@
     "entry": "screenshot-tidy-install.sh",
     "icon": "📸",
     "short": "Auto-organize screenshots",
-    "long": "Installs a background watcher that moves new Desktop screenshots into dated folders automatically, so they never pile up on your Desktop.",
+    "long": "Installs a background watcher that moves new screenshots into your Screenshots folder — resolved per Mac (iCloud Desktop or local), so it works wherever your iCloud Desktop lives.",
     "status": "public"
   },
   "secrets-sweep": {
@@ -171,7 +171,7 @@
     "entry": "run.sh",
     "icon": "☀️",
     "short": "Native Sengled light controls",
-    "long": "Sunlight: power, brightness, colors, dedicated white, warm startup and on-device daylight automation, with private recovery backups.",
+    "long": "Sunlight: power, brightness, colors, dedicated white, warm startup, on-device daylight automation, and recipe editing, with private recovery backups.",
     "status": "public"
   },
   "voice-memo-renamer": {

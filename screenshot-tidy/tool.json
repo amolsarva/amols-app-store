@@ -13,27 +13,29 @@
     "screenshots"
   ],
   "color": "linear-gradient(135deg, #62a8ff, #55d6c2)",
-  "summary": "Moves screenshots off the Desktop into a real Screenshots folder and keeps the habit alive.",
+  "summary": "Sweeps screenshots into your Screenshots folder, finding it on whichever Mac you're on.",
   "story": "Screenshots are field notes from the day: a chart, a bug, a building, a founder deck. They should be findable, not sprinkled across the Desktop like confetti.",
   "launcher": {
     "entry": "screenshot-tidy-install.sh",
     "short": "Auto-organize screenshots",
-    "long": "Installs a background watcher that moves new Desktop screenshots into dated folders automatically, so they never pile up on your Desktop."
+    "long": "Installs a background watcher that moves new screenshots into your Screenshots folder — resolved per Mac (iCloud Desktop or local), so it works wherever your iCloud Desktop lives."
   },
   "installs": [
     {
       "id": "screenshot-tidy-agent",
-      "what": "LaunchAgents com.amol.screenshot-tidy (+ clipboard helper) running ~/bin/screenshot-tidy.sh and ~/bin/screenshot-settings.sh",
+      "what": "LaunchAgents com.amol.screenshot-tidy (+ clipboard helper) running ~/bin/screenshot-tidy.sh, ~/bin/screenshot-settings.sh and ~/bin/screenshot-paths.sh",
       "present": [
         "agent:com.amol.screenshot-tidy"
       ],
       "sources": [
+        "screenshot-paths.sh",
         "screenshot-tidy.sh",
         "screenshot-settings.sh",
         "screenshot-tidy-install.sh"
       ],
       "update": "screenshot-tidy-install.sh",
-      "auto": true
+      "auto": true,
+      "note": "The agent needs Full Disk Access for /bin/bash to list the Desktop and iCloud Drive; without it it runs and moves nothing."
     }
   ],
   "store_path": "screenshot-tidy/",

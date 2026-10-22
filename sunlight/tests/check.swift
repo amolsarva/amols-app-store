@@ -32,6 +32,24 @@ import Darwin
             precondition(hex.count == 8 && UInt32(hex,radix:16) != nil)
         }
         print("PASS: twelve moods, six compositions, palette validity and looping")
+
+        let installed = RecipeCompiler.stops(fromRule: DaylightProgram.rules[2])
+        precondition(installed.count == 7 && installed[0].minute == 0 && installed[0].hex == "FF380000")
+        let recompiled = try RecipeCompiler.rule(installed)
+        precondition(recompiled == DaylightProgram.rules[2])
+        precondition(RecipeCompiler.color(installed, atMinute: 0) == "FF380000")
+        precondition(RecipeCompiler.color(installed, atMinute: 719) == "FFBB7000")
+        precondition(RecipeCompiler.color(installed, atMinute: 1439) == "FF500000")
+        rejects { _ = try RecipeCompiler.rule([]) }
+        rejects { _ = try RecipeCompiler.rule([.init(minute: 60, hex: "FF380000")]) }
+        rejects { _ = try RecipeCompiler.rule([.init(minute: 0, hex: "FF3800")]) }
+        rejects { _ = try RecipeCompiler.rule([.init(minute: 0, hex: "FF380000"), .init(minute: 0, hex: "FF780000")]) }
+        rejects { _ = try RecipeCompiler.rule((0..<24).map { .init(minute: $0 * 60, hex: "FF380000") }) }
+        for preset in RecipeLibrary.presets {
+            precondition(RecipeCompiler.size(preset.stops) <= RecipeCompiler.limit)
+            _ = try RecipeCompiler.rule(preset.stops)
+        }
+        print("PASS: recipe round-trip, day coverage, 511-byte limit and preset validity")
         let name = "SunlightTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName:name)!
         defer { defaults.removePersistentDomain(forName:name) }

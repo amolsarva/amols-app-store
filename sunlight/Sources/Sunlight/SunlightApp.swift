@@ -280,6 +280,7 @@ struct MainView: View {
             TabView(selection: $light.selectedTab) {
                 ControlView().tabItem { Label("Light", systemImage: "lightbulb") }.tag("light")
                 DaylightView().tabItem { Label("Daylight", systemImage: "sun.horizon") }.tag("daylight")
+                RecipeView().tabItem { Label("Recipes", systemImage: "list.bullet.rectangle") }.tag("recipes")
                 DeviceView().tabItem { Label("Bulbs", systemImage: "slider.horizontal.3") }.tag("bulbs")
                 ChimeView().tabItem { Label("Clock", systemImage: "clock") }.tag("clock")
             }
@@ -326,5 +327,143 @@ struct ShowWindowButton: View {
     @Environment(\.openWindow) var openWindow
     var body: some View {
         Button("Open Sunlight") { openWindow(id: "sunlight"); NSApplication.shared.activate(ignoringOtherApps: true) }
+    }
+}
+
+struct RecipeView: View {
+    @EnvironmentObject var light: LightModel
+    var body: some View {
+        Form {
+            Section("Running on the bulb now") {
+                HStack {
+                    Button("Read recipe from bulb") { light.readRecipe() }
+                        .buttonStyle(.borderedProminent).tint(.orange).disabled(light.busy)
+                    Button("Edit a copy") { light.editLiveRecipe() }.disabled(light.liveStops.isEmpty)
+                    Spacer()
+                    Text(light.liveFree).font(.caption).foregroundStyle(.secondary)
+                }
+                if light.recipeRead {
+                    if light.liveStops.isEmpty {
+                        Text("Rule3 holds no Color2 schedule. See the raw rules below.")
+                    } else {
+                        Self.timeline(light.liveStops)
+                        LabeledContent("Schedule", value: light.liveStops.map { "\($0.label) \($0.hex)" }.joined(separator: "  ·  "))
+                            .font(.caption.monospaced())
+                    }
+                    LabeledContent("Matches the recipe Sunlight installs", value: light.programInstalled ? "Yes" : "No")
+                    LabeledContent("Daylight following the clock", value: light.automatic ? "On (Mem2 = 1)" : "Paused (Mem2 = 0)")
+                    DisclosureGroup("Raw rules and memory") {
+                        VStack(alignment: .leading, spacing: 10) {
+                            ForEach(0..<3, id: \.self) { i in
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("Rule\(i + 1) · \(light.liveRuleStates[i])").font(.caption.bold())
+                                    Text(light.liveRules[i].isEmpty ? "(empty)" : light.liveRules[i])
+                                        .font(.system(.caption2, design: .monospaced)).textSelection(.enabled)
+                                }
+                            }
+                            Text(light.liveMemory.joined(separator: "   "))
+                                .font(.system(.caption2, design: .monospaced)).textSelection(.enabled)
+                        }.padding(.vertical, 6)
+                    }
+                }
+                Text(light.recipeMessage).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+            }
+            Section("Write a recipe") {
+                TextField("Recipe name", text: $light.draftRecipeName)
+                Self.timeline(light.draftStops)
+                ForEach($light.draftStops) { $stop in
+                    HStack(spacing: 10) {
+                        Picker("", selection: Binding(get: { stop.minute / 60 }, set: { stop.minute = $0 * 60 + stop.minute % 60 })) {
+                            ForEach(0..<24, id: \.self) { Text(String(format: "%02d", $0)).tag($0) }
+                        }.labelsHidden().frame(width: 62)
+                        Picker("", selection: Binding(get: { stop.minute % 60 }, set: { stop.minute = (stop.minute / 60) * 60 + $0 })) {
+                            ForEach([0, 15, 30, 45], id: \.self) { Text(String(format: "%02d", $0)).tag($0) }
+                        }.labelsHidden().frame(width: 62)
+                        ColorPicker("", selection: Binding(
+                            get: { DaylightView.rgb(stop.hex) },
+                            set: { stop.hex = Self.hex($0, white: stop.hex.suffix(2)) }), supportsOpacity: false)
+                            .labelsHidden()
+                        TextField("RGBW", text: $stop.hex).font(.system(.body, design: .monospaced)).frame(width: 100)
+                        Button("Try") { light.previewStop(stop.hex) }.disabled(light.busy || !light.online)
+                        Button(role: .destructive) { light.removeStop(stop.id) } label: { Image(systemName: "minus.circle") }
+                            .buttonStyle(.borderless)
+                    }
+                }
+                HStack {
+                    Button("Add a color") { light.addStop() }
+                    Button("Start from the installed recipe") { light.restoreInstalledRecipe() }
+                    Spacer()
+                    Text("\(RecipeCompiler.size(light.draftStops)) / \(RecipeCompiler.limit) bytes")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(RecipeCompiler.size(light.draftStops) > RecipeCompiler.limit ? .red : .secondary)
+                }
+                HStack {
+                    Button("Save on this Mac") { light.saveDraftRecipe() }
+                    Button("Write to the bulb…") { light.recipeConfirmation = true }
+                        .buttonStyle(.borderedProminent).tint(.orange)
+                        .disabled(light.busy || !light.canInstallDaylight || !light.programInstalled)
+                }
+                Text("The first color must start at 00:00. Each color is an eight-digit RGBW value: red, green, blue, white. Writing replaces Rule3, the color schedule only; modes, clock and chime in Rule1–2 are untouched.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Saved recipes") {
+                ForEach(RecipeLibrary.presets) { preset in
+                    HStack {
+                        Self.swatches(preset.stops)
+                        Text(preset.name)
+                        Spacer()
+                        Button("Load") { light.loadRecipe(preset) }
+                    }
+                }
+                ForEach(light.recipes) { recipe in
+                    HStack {
+                        Self.swatches(recipe.stops)
+                        Text(recipe.name)
+                        Spacer()
+                        Button("Load") { light.loadRecipe(recipe) }
+                        Button(role: .destructive) { light.deleteRecipe(recipe) } label: { Image(systemName: "trash") }
+                            .buttonStyle(.borderless)
+                    }
+                }
+                if light.recipes.isEmpty {
+                    Text("Your own recipes appear here once you save one.").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }.formStyle(.grouped).disabled(light.busy)
+        .confirmationDialog("Write this recipe to the bulb?", isPresented: $light.recipeConfirmation) {
+            Button("Back up and write") { light.applyRecipe() }
+        } message: {
+            Text("Saves a recovery backup, then replaces Rule3 and reads it back before re-enabling it. A dropped connection leaves the schedule disabled rather than half-written.")
+        }
+    }
+    /// A day-proportional bar: each color occupies the minutes until the next one.
+    static func timeline(_ stops: [DaylightStop]) -> some View {
+        let sorted = stops.sorted { $0.minute < $1.minute }
+        return VStack(alignment: .leading, spacing: 4) {
+            GeometryReader { geometry in
+                HStack(spacing: 0) {
+                    ForEach(Array(sorted.enumerated()), id: \.element.id) { index, stop in
+                        let end = index + 1 < sorted.count ? sorted[index + 1].minute : 1440
+                        Rectangle().fill(DaylightView.rgb(stop.hex))
+                            .frame(width: max(0, geometry.size.width * Double(end - stop.minute) / 1440))
+                    }
+                }
+            }.frame(height: 32).clipShape(RoundedRectangle(cornerRadius: 4))
+            HStack(spacing: 0) {
+                ForEach(sorted) { stop in
+                    Text(stop.label).font(.caption2.monospacedDigit()).frame(maxWidth: .infinity)
+                }
+            }
+        }.padding(.vertical, 6)
+    }
+    static func swatches(_ stops: [DaylightStop]) -> some View {
+        HStack(spacing: 2) {
+            ForEach(stops) { stop in Rectangle().fill(DaylightView.rgb(stop.hex)).frame(width: 7, height: 16) }
+        }.clipShape(RoundedRectangle(cornerRadius: 2))
+    }
+    static func hex(_ color: Color, white: Substring) -> String {
+        guard let c = NSColor(color).usingColorSpace(.deviceRGB) else { return "FFBB7000" }
+        return String(format: "%02X%02X%02X", Int(c.redComponent * 255), Int(c.greenComponent * 255), Int(c.blueComponent * 255))
+            + (white.count == 2 ? String(white) : "00")
     }
 }

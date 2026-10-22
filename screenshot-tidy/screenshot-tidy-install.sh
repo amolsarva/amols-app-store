@@ -1,8 +1,11 @@
 #!/bin/bash
 # ╔══════════════════════════════════════════════════════════════════════════╗
 # ║  screenshot-tidy-install.sh                                              ║
-# ║  Installs the LaunchAgent that runs screenshot-tidy.sh whenever          ║
-# ║  ~/Desktop changes. Safe to re-run — it reinstalls cleanly.              ║
+# ║  Installs the LaunchAgent that runs screenshot-tidy.sh whenever any of   ║
+# ║  the watched folders change. The Screenshots folder and the folders to   ║
+# ║  watch are resolved for this Mac by screenshot-paths.sh (iCloud Desktop  ║
+# ║  when it exists, else ~/Desktop), so nothing is hard-coded to ~/Desktop. ║
+# ║  Safe to re-run — it reinstalls cleanly.                                 ║
 # ║                                                                          ║
 # ║  Also installs com.amol.screenshot-clipboard — a LaunchAgent that        ║
 # ║  ensures macOS always copies screenshots to the clipboard (so you can    ║
@@ -12,9 +15,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
 TIDY_SCRIPT="$SCRIPT_DIR/screenshot-tidy.sh"
+PATHS_SCRIPT="$SCRIPT_DIR/screenshot-paths.sh"
 SETTINGS_SCRIPT="$SCRIPT_DIR/screenshot-settings.sh"
 INSTALL_SCRIPT="$HOME/bin/screenshot-tidy.sh"
 INSTALL_SETTINGS="$HOME/bin/screenshot-settings.sh"
+INSTALL_PATHS="$HOME/bin/screenshot-paths.sh"
 LABEL="com.amol.screenshot-tidy"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 LOG_DIR="$HOME/Library/Logs"
@@ -27,12 +32,24 @@ if [[ ! -f "$SETTINGS_SCRIPT" ]]; then
   echo "ERROR: $SETTINGS_SCRIPT not found"
   exit 1
 fi
+if [[ ! -f "$PATHS_SCRIPT" ]]; then
+  echo "ERROR: $PATHS_SCRIPT not found"
+  exit 1
+fi
 
-chmod +x "$TIDY_SCRIPT"
-chmod +x "$SETTINGS_SCRIPT"
-mkdir -p "$(dirname "$PLIST")" "$LOG_DIR" "$HOME/Desktop/Screenshots" "$HOME/bin"
+# Resolve this Mac's Screenshots folder and the folders to watch.
+# shellcheck source=screenshot-paths.sh
+source "$PATHS_SCRIPT"
+TARGET="$(shot_target)"
+WATCH=()                      # bash 3.2 on macOS: no mapfile
+while IFS= read -r w; do WATCH+=("$w"); done < <(shot_sources "$TARGET")   # the target itself is NOT watched: moving
+                                   # files into it would retrigger the agent
+
+chmod +x "$TIDY_SCRIPT" "$SETTINGS_SCRIPT" "$PATHS_SCRIPT"
+mkdir -p "$(dirname "$PLIST")" "$LOG_DIR" "$TARGET" "$HOME/bin"
 install -m 755 "$TIDY_SCRIPT" "$INSTALL_SCRIPT"
 install -m 755 "$SETTINGS_SCRIPT" "$INSTALL_SETTINGS"
+install -m 755 "$PATHS_SCRIPT" "$INSTALL_PATHS"
 
 "$INSTALL_SETTINGS"
 
@@ -53,7 +70,7 @@ cat > "$PLIST" <<PLIST
   </array>
   <key>WatchPaths</key>
   <array>
-    <string>$HOME/Desktop</string>
+$(for w in "${WATCH[@]}"; do printf '    <string>%s</string>\n' "$w"; done)
   </array>
   <key>StartInterval</key><integer>30</integer>
   <key>ThrottleInterval</key><integer>3</integer>
@@ -72,17 +89,32 @@ echo
 echo "Installed $LABEL"
 echo "  Script:  $INSTALL_SCRIPT"
 echo "  Plist:   $PLIST"
-echo "  Watches: $HOME/Desktop"
-echo "  Target:  $HOME/Desktop/Screenshots"
+echo "  Watches: ${WATCH[*]}"
+echo "  Target:  $TARGET"
 echo "  Log:     $LOG_DIR/screenshot-tidy.log"
+# ── Post-install self-check ──────────────────────────────────────────────────
+# A LaunchAgent cannot read ~/Desktop or iCloud Drive unless the shell running
+# it has Full Disk Access. Without it the agent exits 0 having moved nothing,
+# which is indistinguishable from "nothing to do". Say so plainly instead.
+sleep 3
+if grep -q "cannot read" "$LOG_DIR/screenshot-tidy.log" 2>/dev/null \
+   && [ "$(tail -5 "$LOG_DIR/screenshot-tidy.log" | grep -c 'cannot read')" -gt 0 ]; then
+  echo
+  echo "⚠️  The agent ran but could not read the watched folders (macOS privacy)."
+  echo "    One-time fix: System Settings ▸ Privacy & Security ▸ Full Disk Access,"
+  echo "    then add /bin/bash (⌘⇧G in the file picker to type the path)."
+  echo "    Until then, Launch from Backstage or a Terminal still works — those"
+  echo "    already have access."
+fi
+
 echo
 echo "Take a screenshot (Cmd+Shift+3) to test. It should land in"
-echo "~/Desktop/Screenshots."
+echo "$TARGET."
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 2.  Screenshot settings
-#     Keeps screenshots landing in ~/Desktop/Screenshots and copying to the
-#     clipboard automatically.
+#     Keeps screenshots landing in the resolved Screenshots folder and copying
+#     to the clipboard automatically.
 # ─────────────────────────────────────────────────────────────────────────────
 CLIP_LABEL="com.amol.screenshot-clipboard"
 CLIP_PLIST="$HOME/Library/LaunchAgents/$CLIP_LABEL.plist"
@@ -115,5 +147,5 @@ launchctl kickstart -k "gui/$(id -u)/$CLIP_LABEL"
 echo
 echo "Installed $CLIP_LABEL"
 echo "  Plist:   $CLIP_PLIST"
-echo "  Effect:  screenshots land in ~/Desktop/Screenshots and copy to clipboard on every login"
+echo "  Effect:  screenshots land in $TARGET and copy to clipboard on every login"
 echo "  Tip:     take a screenshot (Cmd+Shift+3 or Cmd+Shift+4) then Ctrl-V to paste"

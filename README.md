@@ -36,7 +36,7 @@ If a tool looks useful but the steps feel intimidating, the easiest path is alwa
 - 📣 **[iMessage Campaign Studio](./imessage-campaigns/)** (2026-09-24): Find people by what you've talked about before, review each one, then send separate personal texts, with dry-run first and reply-aware follow-ups.
 - 🌙 **[iMessage Sync](./imessage-sync/)** (2026-09-24): Every night, your whole iMessage history becomes a folder people and AIs can read: Markdown per person and per day, a searchable database, and photos, videos and PDFs sorted and shrunk.
 - 🔐 **[Secrets Sweep](./secrets-sweep/)** (2026-09-24): Audits a folder tree for API keys, tokens and credential files that drifted out of your vault, and can move them in.
-- ☀️ **[Sunlight](./sunlight/)** (2026-09-24): Native Mac controls for a Tasmota smart bulb: moods, slow color compositions, warm start-up and on-device daylight automation. Your bulb's details stay in a private local file.
+- ☀️ **[Sunlight](./sunlight/)** (2026-09-24): Native Mac controls for a Tasmota smart bulb: moods, slow color compositions, warm start-up, on-device daylight automation, and a Recipes tab that reads and rewrites the bulb's color schedule. Your bulb's details stay in a private local file.
 - 🛟 **[Google Photos Space Rescue HQ](./rescue-hq/)** (2026-09-17): Merge a Google Takeout zip set, sort it into flat PHOTOS and per-year VIDEOS, and repair what Takeout breaks.
 - 🎙️ **[VOICEMEMOCLEANER](./voicememocleaner/)** (2026-09-17): Exports every Voice Memo — original and compressed copies — with title, date, duration, and GPS metadata for analysis and archival.
 
@@ -80,7 +80,7 @@ Keep every conversation, readable by you and your AIs, without Messages hoarding
 | ☁️ **[Clean iCloud](./cleanicloud/)** | Finds iCloud duplicates and suspiciously large clusters, then asks before removing anything. |
 | 💿 **[Drive Dedup](./drive-dedup/)** | Scans external drives for duplicates and plans a clean consolidation with checkpoints. |
 | 📸 **[Screenshot Mover](https://github.com/amolsarva/screenshot-mover)** | Every screenshot is on your clipboard the instant you take it, and filed into iCloud › Desktop › Screenshots for later review. |
-| 📸 **[Screenshot Tidy](./screenshot-tidy/)** | Moves screenshots off the Desktop into a real Screenshots folder and keeps the habit alive. |
+| 📸 **[Screenshot Tidy](./screenshot-tidy/)** | Sweeps screenshots into your Screenshots folder, finding it on whichever Mac you're on. |
 | 🎙️ **[VOICEMEMOCLEANER](./voicememocleaner/)** 🆕 | Exports every Voice Memo — original and compressed copies — with title, date, duration, and GPS metadata for analysis and archival. |
 
 ### Contacts & data
@@ -117,7 +117,7 @@ Careful one-by-one outreach. Dry-run first, every recipient reviewed. Separate f
 
 | Tool | What it does |
 |------|--------------|
-| ☀️ **[Sunlight](./sunlight/)** 🆕 | Native Mac controls for a Tasmota smart bulb: moods, slow color compositions, warm start-up and on-device daylight automation. Your bulb's details stay in a private local file. |
+| ☀️ **[Sunlight](./sunlight/)** 🆕 | Native Mac controls for a Tasmota smart bulb: moods, slow color compositions, warm start-up, on-device daylight automation, and a Recipes tab that reads and rewrites the bulb's color schedule. Your bulb's details stay in a private local file. |
 
 _29 tools · generated from each tool's `tool.json` by `supporting-files/publish/build_catalog.py`; edit those, not this table._
 <!-- catalog:end -->

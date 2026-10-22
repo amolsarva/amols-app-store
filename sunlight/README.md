@@ -1,5 +1,13 @@
 # Sunlight
 
+## Version 1.4 — Recipes
+
+The **Recipes** tab shows what the bulb is actually running and lets you write your own schedule. **Read recipe from bulb** fetches Rule1–3 with their state, length and free bytes, plus Mem1–4 and Var1–4, and decodes Rule3 into a day-long timeline of colors with their start times. The raw rule text is shown too, for a bulb carrying rules Sunlight did not write.
+
+A recipe is the color schedule only: the `ON Event#d>=<minute> DO Color2 <RGBW>` statements in Rule3. Modes, clock and chime in Rule1–2 are never touched. Edit the running recipe as a copy, or load one of the presets — Installed daylight, Candle evening, Cool workday, Polar night — then add or remove colors, set each start time and RGBW value, and preview any color on the bulb with **Try**. A live byte meter tracks Tasmota's 511-byte rule buffer, the first color must start at 00:00 so every minute is covered, and duplicate start times are refused before anything is sent.
+
+**Save on this Mac** keeps a named recipe in the app. **Write to the bulb** saves a recovery backup, refuses a Rule3 that holds an unrelated automation, disables Rule3, writes it, reads it back and compares text and length, and only then re-enables it; a dropped connection leaves the schedule disabled rather than half-written. Writing is limited, like the daylight installer, to the bulb listed as `daylightVerifiedMAC`, and requires the daylight program to be installed. **Start from the installed recipe** restores the standard schedule.
+
 ## Version 1.3 — bulb-native switch modes and chime
 
 The bulb now owns the useful behavior: a normal power-up selects Edison warmth, a second quick power-cycle selects warm-neutral light, and a third selects a restrained daytime palette. Each selection gives three short bell-like blinks. The hourly chime is also native to the bulb, so Sunlight and the Mac may be closed.
@@ -44,6 +52,7 @@ A native SwiftUI Mac app for your Sengled W31-N15 running Tasmota. Open **Backst
 - Power and brightness; sunset, candle, morning, daylight, RGB and dedicated-white presets.
 - Native color picker, simulated color temperature, dedicated white-channel level.
 - Daily cycle on/off, timezone selection, clock sync, status, private backup, console and restart.
+- Recipes: read the bulb's live rules and memory, edit the daylight color schedule, save recipes, write Rule3 back with verification.
 - Choosing a color pauses automation. Brightness changes do not. Automatic color updates never turn an off bulb on.
 
 ## On-device daylight program

@@ -34,6 +34,17 @@ final class LightModel: ObservableObject {
     @Published var artStep = 0
     @Published var artInterval = 90.0
     @Published var selectedTab = "light"
+    @Published var liveRules: [String] = ["", "", ""]
+    @Published var liveRuleStates: [String] = ["—", "—", "—"]
+    @Published var liveFree = "—"
+    @Published var liveStops: [DaylightStop] = []
+    @Published var liveMemory: [String] = []
+    @Published var recipeRead = false
+    @Published var draftStops: [DaylightStop] = RecipeLibrary.installed.stops
+    @Published var draftRecipeName = "My recipe"
+    @Published var recipes: [LightRecipe] = RecipeLibrary.load()
+    @Published var recipeMessage = "Read the bulb to see the recipe it is running."
+    @Published var recipeConfirmation = false
     @Published var chimeEnabled = false
     @Published var chiming = false
     @Published var chimeMessage = "Hourly chime is off. Blink now works without enabling it."
@@ -111,6 +122,8 @@ final class LightModel: ObservableObject {
         loadChimePreference()
         password = passwords[id] ?? ""
         online = false; automatic = false; programInstalled = false
+        recipeRead = false; liveStops = []; liveRules = ["", "", ""]
+        recipeMessage = "Read the bulb to see the recipe it is running."
         power = false; deviceTime = "—"; version = "—"; signal = "—"; uptime = "—"; backupPath = ""
         saveLibrary(); connect()
     }
