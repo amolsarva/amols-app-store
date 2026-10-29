@@ -143,4 +143,3 @@ Apple's `/usr/bin/python3` is 3.9: keep code 3.9-compatible (no 3.12-only f-stri
 - `supporting-files/archive/FINISH-CLEANUP.command` / `finish-cleanup.sh`: stale one-time scripts that
   reference an Anthropic key once committed to this public repo (`drive_dedup/run.sh`, prefix
   `sk-ant-api03-REDACTED…`). If nobody has confirmed it was rotated, flag it to Amol. Don't run them.
-- `cpu-guard/.venv` (old in-iCloud venv) is obsolete once cpu-guard is re-installed via python-guard.

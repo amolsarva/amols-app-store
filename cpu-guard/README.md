@@ -4,11 +4,13 @@ A lightweight Python watchdog that stops noisy macOS background processes when t
 
 ## What it does
 
-macOS background daemons (Spotlight, iCloud, Photos analysis, Siri, etc.) periodically spike CPU and slow everything down. This script watches a configurable list of those processes and acts only when one of them sustains high CPU usage for more than 30 seconds.
+macOS background daemons (Spotlight, iCloud, Photos analysis, Siri, Apple Intelligence, etc.) periodically use a lot of CPU. This script watches a configurable list of those processes and reacts only when one stays above the CPU limit for a long time.
 
-Default behavior is practical and quiet: try `SIGTERM` first, wait briefly, then use `SIGKILL` only if the process refuses to exit. Notifications are sent only for actions and errors by default, not every threshold crossing.
+**Default is Notify only: it logs and notifies, and kills nothing.** Every 50th notification (or on demand) it opens a popup with a report, an AI-ready analysis you can paste into an AI, and a toggle between *Notify only*, *Terminate politely* (SIGTERM) and *Kill routinely* (SIGTERM, then SIGKILL if the process refuses to exit).
 
-AI-related processes (Claude, OpenAI tools, OpenClaw) are explicitly excluded from flagging.
+Defaults: limit 100% (one full core; percentages are per core), sustained for 2 hours (7200s), at most one reaction per process name every 6 hours. Normal indexing bursts last minutes, so two hours means something is really stuck.
+
+AI-related processes (Claude, OpenAI tools, OpenClaw) are explicitly excluded.
 
 ## Usage
 
@@ -39,38 +41,36 @@ and restarts it automatically at login.
 ## Requirements
 
 ```bash
-pip install psutil
+Installed automatically through python-guard (`bash cpu-guard-install.sh`); no manual pip needed.
 ```
 
-Python 3.7+ (pre-installed on macOS).
+Never run bare `pip` here: Homebrew Python refuses it (PEP 668).
 
 ## Configuration
 
-Edit the top of `cpu_guard.py`:
-
-```python
-CPU_LIMIT = 80.0   # percent — threshold to start counting
-DURATION  = 30     # seconds sustained above limit before acting
-INTERVAL  = 5      # seconds between checks
-ACTION    = "kill" # kill, terminate, or notify
-```
-
-The LaunchAgent can be tuned with environment variables before running the installer:
+The mode and thresholds are normally changed from the popup (stored in `~/.config/cpu-guard/config.json`, which wins over the defaults below) or with:
 
 ```bash
-CPU_GUARD_ACTION=terminate CPU_GUARD_NOTIFY_EVENTS=action,error bash cpu-guard-install.sh
+python3 cpu_guard.py --popup                       # show the report popup now
+python3 cpu_guard.py --report                      # print the report and the AI-ready analysis
+python3 cpu_guard.py --set-mode notify|terminate|kill
 ```
 
-Useful variables:
+Defaults live in the `DEFAULTS` block of `cpu_guard.py`; the installer bakes environment overrides into the LaunchAgent:
 
-- `CPU_GUARD_ACTION`: `kill` (default), `terminate`, or `notify`
-- `CPU_GUARD_NOTIFY_EVENTS`: comma-separated events; default is `action,error`
-- `CPU_GUARD_CPU_LIMIT`: CPU percentage threshold; default is `80`
-- `CPU_GUARD_DURATION`: sustained seconds above threshold; default is `30`
-- `CPU_GUARD_ACTION_COOLDOWN`: seconds before acting again on the same process name; default is `1800`
+```bash
+CPU_GUARD_ACTION=terminate CPU_GUARD_DURATION=3600 bash cpu-guard-install.sh
+```
+
+- `CPU_GUARD_ACTION`: `notify` (default), `terminate`, or `kill`
+- `CPU_GUARD_CPU_LIMIT`: CPU percentage threshold; default `100`
+- `CPU_GUARD_DURATION`: sustained seconds above the threshold; default `7200`
+- `CPU_GUARD_ACTION_COOLDOWN`: seconds before reacting again to the same process name; default `21600`
+- `CPU_GUARD_POPUP_EVERY`: show the report popup every N notifications; default `50`
+- `CPU_GUARD_NOTIFY_EVENTS`: comma-separated events to notify on; default `action,error`
 - `CPU_GUARD_WATCH`: optional comma-separated replacement for the built-in watched process list
 
-Add or remove process names from the `WATCH` list to customize what can be acted on.
+Add or remove process names in the `WATCH` list to customize what is watched.
 
 ## Optional: shell aliases
 

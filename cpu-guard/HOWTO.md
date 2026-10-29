@@ -55,7 +55,7 @@ Use terminate-only mode if you want graceful exits but no forced kill:
 CPU_GUARD_ACTION=terminate bash cpu-guard-install.sh
 ```
 
-Return to the default decisive mode:
+Kill routinely (not the default; the popup toggle does the same):
 
 ```bash
 CPU_GUARD_ACTION=kill CPU_GUARD_NOTIFY_EVENTS=action,error bash cpu-guard-install.sh
@@ -66,12 +66,12 @@ CPU_GUARD_ACTION=kill CPU_GUARD_NOTIFY_EVENTS=action,error bash cpu-guard-instal
 The installer writes these values into the LaunchAgent environment:
 
 ```bash
-CPU_GUARD_ACTION=kill
+CPU_GUARD_ACTION=notify
 CPU_GUARD_NOTIFY_EVENTS=action,error
-CPU_GUARD_CPU_LIMIT=80
-CPU_GUARD_DURATION=30
+CPU_GUARD_CPU_LIMIT=100
+CPU_GUARD_DURATION=7200
 CPU_GUARD_INTERVAL=5
-CPU_GUARD_ACTION_COOLDOWN=1800
+CPU_GUARD_ACTION_COOLDOWN=21600
 ```
 
 `CPU_GUARD_NOTIFY_EVENTS` accepts comma-separated event names. The useful values are:

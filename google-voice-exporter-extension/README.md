@@ -8,7 +8,7 @@ Local Chrome extension for exporting the currently open Google Voice conversatio
 2. Enable **Developer mode**.
 3. Click **Load unpacked**.
 4. Select this folder:
-   `/Users/MrAnonymous/Documents/root/google-voice-exporter-extension`
+   the `google-voice-exporter-extension` folder inside your `Documents/root/mac-scripts` copy
 
 ## Use
 
