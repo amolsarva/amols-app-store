@@ -83,6 +83,13 @@
     "long": "Exports the open Google Voice thread as JSON, CSV, or TXT with attachment URLs and logs.",
     "status": "public"
   },
+  "icloud-cold": {
+    "entry": "run.sh",
+    "icon": "🧊",
+    "short": "Move cold files out of iCloud",
+    "long": "Finds exact duplicates, iCloud conflict copies, old screenshots and large files you haven't touched in months, and moves them to a cold folder outside iCloud. Every move is copy, checksum, manifest row, then Trash; a pointer file says how to bring each one back. Also exports Voice Memos audio and Notes attachments read-only. Everything is a dry run until you add --go.",
+    "status": "review"
+  },
   "imessage-campaigns": {
     "entry": "run.sh",
     "icon": "📣",
@@ -117,13 +124,6 @@
     "short": "Chrome extension for joining a Meet while a sidecar tab hand",
     "long": "Chrome extension for joining a Meet while a sidecar tab handles audio, intros, or presentation work.",
     "status": "public"
-  },
-  "openclaw-chatlog-tap": {
-    "entry": "repair-chatlog-tap.sh",
-    "icon": "🩹",
-    "short": "Repair OpenClaw chatlog tap",
-    "long": "Reinstalls a working chatlog tap and reloads its LaunchAgent.",
-    "status": "private"
   },
   "pdf-to-xls": {
     "entry": "pdftoxls.sh",

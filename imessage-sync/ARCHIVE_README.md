@@ -43,6 +43,10 @@ SELECT kind, name, archive_path, status FROM attachments WHERE message_guid = ?;
 SELECT archive_path FROM attachments WHERE kind='videos' AND archive_path LIKE 'media/videos/2026/2026-09/%';
 ```
 
+Provenance: `messages.source` (also a column of `timeline`) is `messages-app` for anything the nightly sync read
+from the Messages app. Older backups, if any were merged in, label what only they held as `import:<name>`;
+e.g. `SELECT source, COUNT(*) FROM timeline GROUP BY 1;`. Imported chats are ordinary conversations in the folders above.
+
 Tables: `conversations` (one row per Messages chat; `folder` groups chats of the same person),
 `messages` (`reaction` is set for tapbacks, `edited`/`unsent` flags), `attachments`
 (`status`: done / pending / missing = offloaded, retrying / gave_up / skipped),

@@ -4,7 +4,6 @@ import SwiftUI
 enum JobSource: String, CaseIterable, Codable {
     case userAgent = "My LaunchAgents"
     case dormantPlist = "Plists not installed"
-    case openclaw = "OpenClaw cron"
     case claudeScheduled = "Claude scheduled tasks"
     case crontab = "crontab"
     case globalAgent = "Global LaunchAgents"

@@ -49,12 +49,27 @@ via_job() {  # $1 = JSON request for the job
 case "${1:-now}" in
   job)          # launchd runs a local copy of this script (see install.sh) so it can still report
                 # "grant Full Disk Access" when ~/Documents is off-limits. Refresh that copy from the repo.
-                if [[ -f "$DIR/.repo" ]]; then
+                # Rotate the job log (a runaway once grew it to 2.5 GB): keep one 5 MB-ish previous copy.
+                if [[ -f "$JOBLOG" && "$(stat -f%z "$JOBLOG" 2>/dev/null || echo 0)" -gt 5000000 ]]; then
+                  mv -f "$JOBLOG" "$JOBLOG.1" 2>/dev/null || true
+                fi
+                # Self-update, safely. cmp exits 0 = same, 1 = differs, 2 = could not read (an iCloud file
+                # lock, "Resource deadlock avoided"). Only a real difference (1) triggers an update; an
+                # error means "can't tell, try next hour". Every copy must succeed before we re-launch,
+                # and we re-launch at most once (IMESSAGE_SYNC_REEXEC), so this can never spin.
+                if [[ -f "$DIR/.repo" && -z "${IMESSAGE_SYNC_REEXEC:-}" ]]; then
                   REPO="$(cat "$DIR/.repo")"
-                  if [[ -r "$REPO/imessage_sync.py" ]] && { ! cmp -s "$REPO/imessage_sync.py" "$DIR/imessage_sync.py" || ! cmp -s "$REPO/run.sh" "$DIR/run.sh"; }; then
-                    for f in imessage_sync.py run.sh ARCHIVE_README.md; do cp "$REPO/$f" "$DIR/.$f.new" && mv -f "$DIR/.$f.new" "$DIR/$f"; done
-                    echo "updated job code from $REPO"
-                    exec /bin/bash "$DIR/run.sh" job
+                  differs() { cmp -s "$1" "$2"; [[ $? -eq 1 ]]; }
+                  if differs "$REPO/imessage_sync.py" "$DIR/imessage_sync.py" || differs "$REPO/run.sh" "$DIR/run.sh"; then
+                    ok=1
+                    for f in imessage_sync.py run.sh ARCHIVE_README.md; do
+                      cp "$REPO/$f" "$DIR/.$f.new" 2>/dev/null && mv -f "$DIR/.$f.new" "$DIR/$f" || { ok=0; rm -f "$DIR/.$f.new"; }
+                    done
+                    if [[ $ok -eq 1 ]]; then
+                      echo "$(date '+%F %T') updated job code from $REPO"
+                      IMESSAGE_SYNC_REEXEC=1 exec /bin/bash "$DIR/run.sh" job
+                    fi
+                    echo "$(date '+%F %T') job-code update skipped (source busy or unreadable); will retry next hour"
                   fi
                 fi
                 # 1) iCloud safeguard: queue downloads of the archive's parent folder, plus any extra

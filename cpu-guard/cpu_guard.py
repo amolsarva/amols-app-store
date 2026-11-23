@@ -54,7 +54,7 @@ PROCESS_NOTES = {
     "calendard": "Calendar sync",
 }
 
-SKIP_SUBSTR = re.compile(os.environ.get("CPU_GUARD_SKIP_PATTERN", r"(claude|openai|openclaw)"), re.IGNORECASE)
+SKIP_SUBSTR = re.compile(os.environ.get("CPU_GUARD_SKIP_PATTERN", r"(claude|openai)"), re.IGNORECASE)
 
 CONFIG_DIR = Path.home() / ".config" / "cpu-guard"
 CONFIG_PATH = CONFIG_DIR / "config.json"   # written by the popup toggle; wins over environment defaults

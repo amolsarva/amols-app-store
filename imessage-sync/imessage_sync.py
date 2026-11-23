@@ -391,7 +391,8 @@ CREATE TABLE IF NOT EXISTS messages(
   sent_at TEXT, sent_ns INTEGER, is_from_me INTEGER, sender_handle TEXT, sender_name TEXT,
   text TEXT, service TEXT, item_type INTEGER, reply_to_guid TEXT,
   reaction TEXT, reaction_to_guid TEXT, edited INTEGER DEFAULT 0, unsent INTEGER DEFAULT 0,
-  attachment_count INTEGER DEFAULT 0, source_rowid INTEGER, first_seen_at TEXT, updated_at TEXT);
+  attachment_count INTEGER DEFAULT 0, source_rowid INTEGER, first_seen_at TEXT, updated_at TEXT,
+  source TEXT);  -- NULL = read from the Messages app by the nightly sync; 'import:<name>' = folded in from an older backup
 CREATE INDEX IF NOT EXISTS messages_chat_time ON messages(chat_guid, sent_ns);
 CREATE INDEX IF NOT EXISTS messages_time ON messages(sent_ns);
 CREATE TABLE IF NOT EXISTS attachments(
@@ -418,7 +419,8 @@ END;
 DROP VIEW IF EXISTS timeline;
 CREATE VIEW timeline AS
   SELECT m.id, m.sent_at, c.name AS conversation, c.folder, m.sender_name, m.text,
-         m.attachment_count, m.reaction, m.edited, m.unsent, m.guid
+         m.attachment_count, m.reaction, m.edited, m.unsent, m.guid,
+         COALESCE(m.source, 'messages-app') AS source
   FROM messages m LEFT JOIN conversations c ON c.chat_guid = m.chat_guid
   WHERE m.reaction IS NULL;
 """
@@ -428,6 +430,10 @@ def open_master() -> sqlite3.Connection:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(MASTER_DB, timeout=60)
     con.execute("PRAGMA journal_mode=WAL")
+    # Migration: databases made before 2026-11-23 have no messages.source column.
+    if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='messages'").fetchone() \
+            and "source" not in columns(con, "messages"):
+        con.execute("ALTER TABLE messages ADD COLUMN source TEXT")
     con.executescript(SCHEMA)
     return con
 
@@ -484,6 +490,33 @@ def conversation_folder(kind: str, name: str, chat_guid: str, handles: list) -> 
     return f"people/{slugify(name)}"
 
 
+def derive_conversation(guid, ident, style, display, hs, names):
+    """(kind, name, folder) for one chat. Shared by the nightly sync and the legacy-archive importer."""
+    pnames = [resolve_name(h, names) or h for h in hs]
+    if style == 43 or len(hs) > 1:
+        kind = "group"
+        name = display or ", ".join(pnames[:4]) + (f" +{len(pnames) - 4}" if len(pnames) > 4 else "")
+        name = name or ident or "Group"
+    else:
+        h = hs[0] if hs else (ident or guid)
+        resolved = resolve_name(h, names)
+        digits = re.sub(r"\D", "", h)
+        kind = "service" if (not resolved and "@" not in h and 0 < len(digits) <= 6) else "person"
+        name = resolved or h
+    return kind, name, conversation_folder(kind, name, guid, hs)
+
+
+def canonical_folders(con) -> dict:
+    """{folder.lower(): the one spelling to use}. macOS folders are case-insensitive, so 'people/Lila' and
+    'people/lila' are the SAME directory: two chats mapped to both overwrite each other's Markdown.
+    The spelling that already holds the most messages wins."""
+    canon = {}
+    for f, _n in con.execute("""SELECT folder, SUM(message_count) AS n FROM conversations
+                                WHERE folder IS NOT NULL GROUP BY folder ORDER BY n ASC, folder DESC"""):
+        canon[f.lower()] = f
+    return canon
+
+
 def sync_conversations(snap, con, names) -> dict:
     chat_cols = columns(snap, "chat")
     participants: dict[int, list] = {}
@@ -495,20 +528,11 @@ def sync_conversations(snap, con, names) -> dict:
         {'display_name' if 'display_name' in chat_cols else 'NULL'},
         {'service_name' if 'service_name' in chat_cols else 'NULL'} FROM chat""").fetchall()
     stamp = iso(now())
+    canon = canonical_folders(con)
     for rowid, guid, ident, style, display, service in rows:
         hs = sorted(set(participants.get(rowid, [])))
-        pnames = [resolve_name(h, names) or h for h in hs]
-        if style == 43 or len(hs) > 1:
-            kind = "group"
-            name = display or ", ".join(pnames[:4]) + (f" +{len(pnames) - 4}" if len(pnames) > 4 else "")
-            name = name or ident or "Group"
-        else:
-            h = hs[0] if hs else (ident or guid)
-            resolved = resolve_name(h, names)
-            digits = re.sub(r"\D", "", h)
-            kind = "service" if (not resolved and "@" not in h and 0 < len(digits) <= 6) else "person"
-            name = resolved or h
-        folder = conversation_folder(kind, name, guid, hs)
+        kind, name, folder = derive_conversation(guid, ident, style, display, hs, names)
+        folder = canon.setdefault(folder.lower(), folder)   # same folder, whatever the capitalisation
         old = con.execute("SELECT folder FROM conversations WHERE chat_guid=?", (guid,)).fetchone()
         if old and old[0] and old[0] != folder:
             # Name got resolved/changed: move the folder if nothing else uses it.

@@ -341,6 +341,10 @@ load_config() {
     OUTPUT_ROOT="${SAVED_OUTPUT_ROOT:-$DEFAULT_OUTPUT_ROOT}"
     PRESET_NAME="${SAVED_PRESET_NAME:-auto}"
     MUSIC_MIN_DURATION_SEC="${SAVED_MUSIC_MIN_DURATION_SEC:-600}"
+    # v1.2.2: the original/compressed toggles were never saved, so every
+    # launch silently reverted to the defaults (originals OFF). Restore them.
+    SKIP_ORIGINALS="${SAVED_SKIP_ORIGINALS:-$SKIP_ORIGINALS}"
+    SKIP_COMPRESSED="${SAVED_SKIP_COMPRESSED:-$SKIP_COMPRESSED}"
 }
 
 save_config() {
@@ -349,6 +353,8 @@ save_config() {
         echo "SAVED_OUTPUT_ROOT=$(printf '%q' "$OUTPUT_ROOT")"
         echo "SAVED_PRESET_NAME=$(printf '%q' "$PRESET_NAME")"
         echo "SAVED_MUSIC_MIN_DURATION_SEC=$(printf '%q' "$MUSIC_MIN_DURATION_SEC")"
+        echo "SAVED_SKIP_ORIGINALS=$(printf '%q' "$SKIP_ORIGINALS")"
+        echo "SAVED_SKIP_COMPRESSED=$(printf '%q' "$SKIP_COMPRESSED")"
     } > "$CONFIG_FILE" 2>/dev/null || warn "Could not save config to $CONFIG_FILE"
 }
 
@@ -1166,7 +1172,11 @@ do_export() {
         # configured to produce already exists and is non-empty on disk —
         # same "only what we're configured to produce" logic manifest_sufficient
         # uses, just checked against the filesystem instead of the manifest.
+        # v1.2.2: with both copies switched off there is nothing to be
+        # "already present", so never skip on that basis (it used to skip
+        # every recording and backfill the manifest as if it had exported).
         local output_present=true
+        if $SKIP_ORIGINALS && $SKIP_COMPRESSED; then output_present=false; fi
         if ! $SKIP_ORIGINALS && { [[ ! -s "$orig_dest" ]]; }; then output_present=false; fi
         if ! $SKIP_COMPRESSED && { [[ ! -s "$comp_dest" ]]; }; then output_present=false; fi
 
@@ -1415,8 +1425,8 @@ settings_menu() {
         case "$choice" in
             1) pick_output_dir; press_any_key ;;
             2) choose_preset; press_any_key ;;
-            3) $SKIP_ORIGINALS && SKIP_ORIGINALS=false || SKIP_ORIGINALS=true ;;
-            4) $SKIP_COMPRESSED && SKIP_COMPRESSED=false || SKIP_COMPRESSED=true ;;
+            3) $SKIP_ORIGINALS && SKIP_ORIGINALS=false || SKIP_ORIGINALS=true; save_config ;;
+            4) $SKIP_COMPRESSED && SKIP_COMPRESSED=false || SKIP_COMPRESSED=true; save_config ;;
             5) $OVERWRITE_EXISTING && OVERWRITE_EXISTING=false || OVERWRITE_EXISTING=true ;;
             b|B) return ;;
             *) warn "Unrecognized choice" ;;
@@ -1425,6 +1435,45 @@ settings_menu() {
 }
 
 # ── Main menu ──────────────────────────────────────────────────────────────────
+compress_existing_originals() {
+    # v1.2.2: compress the originals already sitting in $OUTPUT_ROOT/originals
+    # into $OUTPUT_ROOT/compressed, without touching Voice Memos or re-reading
+    # the library. Skips any MP3 that already exists (unless overwrite is on).
+    # Preset: the chosen one; with "auto" it falls back to "balanced" (64k),
+    # because auto's music/voice split needs the library metadata.
+    local orig_dir="$OUTPUT_ROOT/originals" comp_dir="$OUTPUT_ROOT/compressed"
+    local preset="$PRESET_NAME"
+    [[ "$preset" == "auto" ]] && preset="balanced"
+    mkdir -p "$comp_dir" 2>/dev/null || true
+    local n_ok=0 n_skip=0 n_fail=0 f base dst tmp
+    shopt -s nullglob
+    for f in "$orig_dir"/*.m4a; do
+        base=$(basename "$f" .m4a)
+        dst="$comp_dir/${base}.mp3"
+        if [[ -s "$dst" ]] && ! $OVERWRITE_EXISTING; then
+            (( n_skip++ )) || true
+            continue
+        fi
+        tmp="/tmp/voicememocleaner_comp_$$.mp3.part"
+        rm -f "$tmp" 2>/dev/null || true
+        if compress_audio "$f" "$tmp" "$preset" && mv -f "$tmp" "$dst" 2>>"$LOG_FILE"; then
+            log_action "COMPRESS | $f -> $dst (preset $preset)"
+            (( n_ok++ )) || true
+        else
+            rm -f "$tmp" 2>/dev/null || true
+            log_error "COMPRESS FAILED | $f"
+            (( n_fail++ )) || true
+        fi
+    done
+    shopt -u nullglob
+    ok "Compressed $n_ok · already there $n_skip · failed $n_fail (preset: $preset)"
+    if [[ $n_fail -gt 0 ]]; then warn "Some files failed. See the log: $LOG_FILE"; fi
+    if [[ $n_ok -eq 0 && $n_skip -eq 0 && $n_fail -eq 0 ]]; then
+        warn "No originals found in $orig_dir. Run an export with originals on first."
+    fi
+    press_any_key
+}
+
 main_menu() {
     while true; do
         banner
@@ -1438,6 +1487,7 @@ main_menu() {
         echo -e "  ${BOLD}[5]${RESET} Settings"
         echo -e "  ${BOLD}[6]${RESET} View recent log"
         echo -e "  ${BOLD}[7]${RESET} Open output folder in Finder"
+        echo -e "  ${BOLD}[8]${RESET} Compress the originals already in the output folder"
         echo -e "  ${BOLD}[q]${RESET} Quit"
         echo
         local choice; choice=$(ask_input "Choose" "1")
@@ -1448,6 +1498,7 @@ main_menu() {
             5) settings_menu ;;
             6) view_log ;;
             7) open "$OUTPUT_ROOT" 2>/dev/null || { warn "Could not open Finder"; press_any_key; } ;;
+            8) compress_existing_originals ;;
             q|Q) echo; info "Bye."; cleanup_and_exit 0 ;;
             *) warn "Unrecognized choice"; press_any_key ;;
         esac

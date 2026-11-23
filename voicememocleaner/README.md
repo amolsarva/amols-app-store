@@ -7,6 +7,10 @@
   per file plus one CSV/JSONL catalog, so you can analyze everything without opening each file.
 - **Read-only:** never modifies or deletes anything in Voice Memos. Dry-run mode shows every action first.
 - Incremental: re-runs skip memos already exported, so refreshing after recording more is fast.
+- **Settings are saved** (v1.2.2): the originals and compressed toggles now persist between runs.
+- **Compress existing originals** (menu [8], v1.2.2): converts the `originals/` already in the output
+  folder into `compressed/` MP3s, without reading Voice Memos. Uses the chosen preset; "auto" uses
+  "balanced" (64k) because auto's music/voice split needs the library metadata.
 
 ```bash
 bash run.sh          # or: bash VOICEMEMOCLEANER.sh

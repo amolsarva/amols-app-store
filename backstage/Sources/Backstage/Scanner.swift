@@ -47,7 +47,6 @@ enum Scanner {
         let installed = Set(jobs.map(\.label))
         jobs += dormantPlists(excluding: installed)
         jobs += crontab()
-        jobs += openclawCron()
         jobs += claudeScheduled()
         return jobs
     }
@@ -253,37 +252,6 @@ enum Scanner {
                 job.rawPlist = line
                 return job
             }
-    }
-
-    static func openclawCron() -> [Job] {
-        let path = home + "/.openclaw/cron/jobs.json"
-        guard let data = FileManager.default.contents(atPath: path),
-              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let list = obj["jobs"] as? [[String: Any]] else { return [] }
-        return list.map { j in
-            let id = j["id"] as? String ?? UUID().uuidString
-            var job = Job(label: id, displayName: j["name"] as? String ?? id, source: .openclaw, plistPath: path)
-            job.summary = j["description"] as? String ?? ""
-            if let s = j["schedule"] as? [String: Any] {
-                if let every = s["everyMs"] as? Double { job.schedule = "Every " + humanInterval(every / 1000) }
-                else if let expr = s["expr"] as? String { job.schedule = "cron " + expr }
-                else { job.schedule = s["kind"] as? String ?? "—" }
-            }
-            if (j["enabled"] as? Bool) == false {
-                job.issues.append(Issue(severity: .info, text: "Disabled in OpenClaw."))
-            }
-            if let p = j["payload"] as? [String: Any], let msg = p["message"] as? String {
-                job.program = [msg]
-            }
-            let runLog = home + "/.openclaw/cron/runs/\(id).jsonl"
-            if FileManager.default.fileExists(atPath: runLog) { job.logs = [LogFile(kind: "runs", path: runLog)] }
-            job.lastActivity = modDate(runLog)
-            job.issues.append(Issue(severity: .info, text: "Runs inside the OpenClaw gateway (ai.openclaw.gateway). If the gateway is not running, this job does not run either."))
-            if let data = try? JSONSerialization.data(withJSONObject: j, options: [.prettyPrinted]) {
-                job.rawPlist = String(decoding: data, as: UTF8.self)
-            }
-            return job
-        }
     }
 
     static func claudeScheduled() -> [Job] {

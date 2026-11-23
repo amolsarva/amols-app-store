@@ -14,7 +14,7 @@ offloads old photos to iCloud. iMessage Sync copies everything out every night:
   can move old years to a drive.
 - **Heals itself.** It checks hourly and runs overnight. If the Mac was asleep, it catches up. After
   a failure it backs off and retries (1h, 2h, 4h, 8h). Offloaded attachments are retried for weeks.
-  Real problems (like a missing permission) send a notification that says what to do.
+  Real problems (like a missing permission) send a notification that says what to do. If iCloud briefly locks the job's own source files, the self-update step skips and retries next hour instead of looping, and `job.log` rotates at 5 MB.
 - **A dashboard and a doctor.** `status.html` shows every run, stage by stage. `run.sh doctor`
   checks permissions, disk space, the job and the primary Mac, and prints the fix for anything wrong.
 - **Hooks for your own projects.** After each run it can rebuild a per-person export and run your

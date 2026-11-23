@@ -18,7 +18,7 @@ Default is now **Notify only**: it logs and notifies when a watched process has 
 The bullets below describe the old kill-mode behavior (still available):
 
 - Watches only names in `WATCH` inside `cpu_guard.py`.
-- Ignores Claude, OpenAI, and OpenClaw process names.
+- Ignores Claude and OpenAI process names.
 - Acts after a watched process stays above 80% CPU for about 30 seconds.
 - Sends `SIGTERM` first.
 - Sends `SIGKILL` only if the process is still alive after the grace period.

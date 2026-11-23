@@ -10,7 +10,7 @@ macOS background daemons (Spotlight, iCloud, Photos analysis, Siri, Apple Intell
 
 Defaults: limit 100% (one full core; percentages are per core), sustained for 2 hours (7200s), at most one reaction per process name every 6 hours. Normal indexing bursts last minutes, so two hours means something is really stuck.
 
-AI-related processes (Claude, OpenAI tools, OpenClaw) are explicitly excluded.
+AI-related processes (Claude, OpenAI tools) are explicitly excluded.
 
 ## Usage
 

@@ -34,12 +34,13 @@ def make_chat_db(path: Path, attachment: Path):
     CREATE TABLE message_attachment_join(message_id INTEGER, attachment_id INTEGER);
     """)
     c.executemany("INSERT INTO handle VALUES (?,?,?)", [(1, "+15551230001", "iMessage"), (2, "friend@example.com", "iMessage"),
-                                                        (3, "12345", "SMS")])
+                                                        (3, "12345", "SMS"), (4, "pat.example@icloud.com", "iMessage")])
     c.executemany("INSERT INTO chat VALUES (?,?,?,?,?,?)", [
         (1, "iMessage;-;+15551230001", 45, "+15551230001", "iMessage", None),
         (2, "iMessage;+;chat1", 43, "chat1", "iMessage", "Book club"),
-        (3, "SMS;-;12345", 45, "12345", "SMS", None)])
-    c.executemany("INSERT INTO chat_handle_join VALUES (?,?)", [(1, 1), (2, 1), (2, 2), (3, 3)])
+        (3, "SMS;-;12345", 45, "12345", "SMS", None),
+        (4, "iMessage;-;pat.example@icloud.com", 45, "pat.example@icloud.com", "iMessage", None)])
+    c.executemany("INSERT INTO chat_handle_join VALUES (?,?)", [(1, 1), (2, 1), (2, 2), (3, 3), (4, 4)])
     base = 800_000_000 * NS  # 2026-05-08
     msgs = [
         (1, "m1", "Hello there", 1, base, 0, 1),
@@ -56,6 +57,9 @@ def make_chat_db(path: Path, attachment: Path):
                  associated_message_type) VALUES (6,'m6','Loved “Hello there”',0,'iMessage',?,1,'p:0/m1',2000)""",
               (base + 120 * NS,))
     c.execute("INSERT INTO chat_message_join VALUES (1,6)")
+    c.execute("INSERT INTO message(ROWID,guid,text,handle_id,service,date,is_from_me) VALUES (7,'m7','From the email chat',4,'iMessage',?,0)",
+              (base + 9000 * NS,))
+    c.execute("INSERT INTO chat_message_join VALUES (4,7)")
     c.execute("INSERT INTO attachment VALUES (1,'a1',?,'beach.png','image/png','public.png',?,0)",
               (str(attachment), attachment.stat().st_size))
     c.execute("INSERT INTO message_attachment_join VALUES (5,1)")
@@ -67,6 +71,28 @@ def sync(env, *args):
     r = subprocess.run([sys.executable, str(SYNC), *args], env=env, capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
     return r.stdout
+
+
+def test_migration():
+    """A master database from before the `source` column existed must be upgraded in place, keeping its rows."""
+    import importlib, re as _re
+    with tempfile.TemporaryDirectory() as tmp:
+        os.environ["IMESSAGE_SYNC_STATE"] = tmp
+        sys.path.insert(0, str(SYNC.parent))
+        m = importlib.import_module("imessage_sync")
+        importlib.reload(m)
+        old_schema = m.SCHEMA.replace("source TEXT);", ");").replace(",\n         COALESCE(m.source, 'messages-app') AS source", "")
+        old_schema = _re.sub(r",\n  \);.*", ");", old_schema)
+        con = sqlite3.connect(Path(tmp) / "archive.db")
+        con.executescript(old_schema)
+        assert "source" not in m.columns(con, "messages")
+        con.execute("INSERT INTO messages(guid, text) VALUES ('g1','kept me')")
+        con.commit(); con.close()
+        con = m.open_master()
+        assert "source" in m.columns(con, "messages")
+        assert con.execute("SELECT guid, text, source FROM timeline WHERE guid='g1'").fetchone() == ("g1", "kept me", "messages-app") \
+            or con.execute("SELECT guid, text, source FROM messages WHERE guid='g1'").fetchone() == ("g1", "kept me", None)
+        con.close()
 
 
 def main():
@@ -81,7 +107,7 @@ def main():
                             "--out", str(img)], capture_output=True)
         make_chat_db(t / "chat.db", img)
         (t / "archive" / "_sync").mkdir(parents=True)
-        (t / "archive" / "_sync" / "config.json").write_text(json.dumps({"name_overrides": {"+1 (555) 123-0001": "Pat Example"}}))
+        (t / "archive" / "_sync" / "config.json").write_text(json.dumps({"name_overrides": {"+1 (555) 123-0001": "Pat Example", "pat.example@icloud.com": "pat example"}}))
         env = dict(os.environ, IMESSAGE_SYNC_CHAT_DB=str(t / "chat.db"), IMESSAGE_SYNC_ARCHIVE=str(t / "archive"),
                    IMESSAGE_SYNC_STATE=str(t / "state"), IMESSAGE_SYNC_ADDRESSBOOK=str(t / "nobook"),
                    IMESSAGE_SYNC_NO_NOTIFY="1")
@@ -93,6 +119,12 @@ def main():
         text = month.read_text()
         assert "Hi! Dinner Friday?" in text and "reacted ❤️" in text and "[photo: beach.png](" in text, text
         assert (a / "conversations/services/12345").exists()
+        # Same person, two chats, names differing only in capitalisation -> ONE folder (macOS folders are case-insensitive).
+        people = [d.name for d in (a / "conversations/people").iterdir()]
+        assert [x.lower() for x in people].count("pat example") == 1, people
+        assert "From the email chat" in month.read_text() and "Hi! Dinner Friday?" in month.read_text(), "both chats must share the month file"
+        folders = {r[0] for r in sqlite3.connect(a / "messages.db").execute("SELECT folder FROM conversations WHERE message_count>0")}
+        assert len({f.lower() for f in folders}) == len(folders), folders
         assert any((a / "conversations/groups").glob("Book club (*)/2026-05.md"))
         photos = list((a / "media/photos").rglob("*.jpg"))
         assert photos, "photo not archived"
@@ -123,6 +155,7 @@ def main():
         env2 = dict(env, IMESSAGE_SYNC_CHAT_DB=str(t / "missing.db"))
         r = subprocess.run([sys.executable, str(SYNC), "run", "--force"], env=env2, capture_output=True, text=True)
         assert r.returncode == 1 and "Full Disk Access" in r.stdout, r.stdout
+    test_migration()
     print("all imessage-sync tests passed")
 
 
