@@ -764,27 +764,6 @@
     // catalog:start
     const apps = [
   {
-    "id": "imessage-sync",
-    "name": "iMessage Sync",
-    "slug": "imessage-sync",
-    "icon": "🌙",
-    "category": "storage",
-    "tags": [
-      "mac-tool",
-      "imessage",
-      "backup",
-      "ai-ready",
-      "sqlite",
-      "launchd"
-    ],
-    "color": "linear-gradient(135deg, #3b2f8f, #1f6feb)",
-    "summary": "Every night, your whole iMessage history becomes a folder people and AIs can read: Markdown per person and per day, a searchable database, and photos, videos and PDFs sorted and shrunk.",
-    "story": "Messages hides your conversations in a database no other app can open and quietly offloads old photos. iMessage Sync copies everything out every night and never forgets, even after you clean up Messages. It heals itself: catches up after sleep, retries with backoff, and a doctor command tells you exactly what to fix.",
-    "path": "imessage-sync/",
-    "featured": true,
-    "isNew": true
-  },
-  {
     "id": "dadsbot",
     "name": "DadsBot",
     "slug": "dadsbot",
@@ -850,6 +829,26 @@
     "featured": true
   },
   {
+    "id": "imessage-sync",
+    "name": "iMessage Sync",
+    "slug": "imessage-sync",
+    "icon": "🌙",
+    "category": "storage",
+    "tags": [
+      "mac-tool",
+      "imessage",
+      "backup",
+      "ai-ready",
+      "sqlite",
+      "launchd"
+    ],
+    "color": "linear-gradient(135deg, #3b2f8f, #1f6feb)",
+    "summary": "Every night, your whole iMessage history becomes a folder people and AIs can read: Markdown per person and per day, a searchable database, and photos, videos and PDFs sorted and shrunk.",
+    "story": "Messages hides your conversations in a database no other app can open and quietly offloads old photos. iMessage Sync copies everything out every night and never forgets, even after you clean up Messages. It heals itself: catches up after sleep, retries with backoff, and a doctor command tells you exactly what to fix.",
+    "path": "imessage-sync/",
+    "featured": true
+  },
+  {
     "id": "rescue-hq",
     "name": "Google Photos Space Rescue HQ",
     "slug": "rescue-hq",
@@ -869,60 +868,6 @@
     "featured": true
   },
   {
-    "id": "imessage-campaigns",
-    "name": "iMessage Campaign Studio",
-    "slug": "imessage-campaigns",
-    "icon": "📣",
-    "category": "productivity",
-    "tags": [
-      "mac-tool",
-      "imessage",
-      "outreach",
-      "python"
-    ],
-    "color": "linear-gradient(135deg, #0ea5e9, #6366f1)",
-    "summary": "Find people by what you've talked about before, review each one, then send separate personal texts, with dry-run first and reply-aware follow-ups.",
-    "story": "Group texts are rude and BCC doesn't exist in Messages. This searches your own history for everyone who, say, came to last year's party, lets you review the list with context, and sends each person their own message.",
-    "path": "imessage-campaigns/",
-    "isNew": true
-  },
-  {
-    "id": "backstage",
-    "name": "Backstage",
-    "slug": "backstage",
-    "icon": "🎛️",
-    "category": "mac-tool",
-    "tags": [
-      "mac-tool",
-      "launchd",
-      "swiftui",
-      "automation"
-    ],
-    "color": "linear-gradient(135deg, #111827, #6b7280)",
-    "summary": "A menu-bar command center for everything running in the background on your Mac: LaunchAgents, cron, your own scripts, with run history and one-click repairs.",
-    "story": "Backstage lists every background job, explains what it does, spots crash loops and missing scripts, and runs your scripts with live output and history.",
-    "path": "backstage/",
-    "isNew": true
-  },
-  {
-    "id": "git-privacy",
-    "name": "git-privacy",
-    "slug": "git-privacy",
-    "icon": "🔏",
-    "category": "mac-tool",
-    "tags": [
-      "mac-tool",
-      "git",
-      "privacy",
-      "icloud"
-    ],
-    "color": "linear-gradient(135deg, #1e293b, #22c55e)",
-    "summary": "Keep code on GitHub and personal notes on your Macs: anything git ignores stays in your iCloud-synced folders and is blocked from ever being pushed.",
-    "story": "If your repos live in iCloud Drive, private notes, contact lists and AI instructions sit right next to public code. git-privacy makes one rule enforceable on every Mac: ignored means private. A pre-push guard blocks leaks, scrub removes private files from not-yet-pushed commits, and audit finds corrupted repositories before they bite.",
-    "path": "git-privacy/",
-    "isNew": true
-  },
-  {
     "id": "python-guard",
     "name": "Python Guard",
     "slug": "python-guard",
@@ -938,41 +883,6 @@
     "summary": "Keeps Python working on your Mac through every Homebrew upgrade: installs the matching Tk, rebuilds tool environments for the new version, and heals itself the moment Homebrew changes Python.",
     "story": "Every Homebrew Python upgrade quietly breaks something: Tk apps stop opening, private environments point at a Python that no longer exists, and `pip install` is refused outright. Python Guard is the one place every tool in this collection asks for Python. It finds the best interpreter, installs `python-tk` for whatever version Homebrew just switched to, rebuilds each tool's private environment on the new version, and runs again automatically whenever Homebrew relinks python3.",
     "path": "python-guard/",
-    "isNew": true
-  },
-  {
-    "id": "secrets-sweep",
-    "name": "Secrets Sweep",
-    "slug": "secrets-sweep",
-    "icon": "🔐",
-    "category": "mac-tool",
-    "tags": [
-      "mac-tool",
-      "security",
-      "secrets"
-    ],
-    "color": "linear-gradient(135deg, #7f1d1d, #f59e0b)",
-    "summary": "Audits a folder tree for API keys, tokens and credential files that drifted out of your vault, and can move them in.",
-    "story": "Keys end up in .env files, notes and old scripts. This finds them and moves them to one private vault with symlinks so nothing breaks.",
-    "path": "secrets-sweep/secrets-sweep.sh",
-    "isNew": true
-  },
-  {
-    "id": "sunlight",
-    "name": "Sunlight",
-    "slug": "sunlight",
-    "icon": "☀️",
-    "category": "mac-tool",
-    "tags": [
-      "mac-tool",
-      "smart-home",
-      "swiftui",
-      "tasmota"
-    ],
-    "color": "linear-gradient(135deg, #f59e0b, #fde68a)",
-    "summary": "Native Mac controls for a Tasmota smart bulb: moods, slow color compositions, warm start-up, on-device daylight automation, and a Recipes tab that reads and rewrites the bulb's color schedule. Your bulb's details stay in a private local file.",
-    "story": "Smart-bulb apps want accounts and clouds. Sunlight talks straight to a Tasmota bulb on your Wi-Fi: twelve moods, slow compositions, a warm Edison start-up, a daylight program that runs on the bulb itself, and a Recipes tab that shows exactly which rules the bulb is running and lets you write your own.",
-    "path": "sunlight/",
     "isNew": true
   },
   {
@@ -1200,6 +1110,23 @@
     "path": "pdf-to-xls/pdftoxls.sh"
   },
   {
+    "id": "imessage-campaigns",
+    "name": "iMessage Campaign Studio",
+    "slug": "imessage-campaigns",
+    "icon": "📣",
+    "category": "productivity",
+    "tags": [
+      "mac-tool",
+      "imessage",
+      "outreach",
+      "python"
+    ],
+    "color": "linear-gradient(135deg, #0ea5e9, #6366f1)",
+    "summary": "Find people by what you've talked about before, review each one, then send separate personal texts, with dry-run first and reply-aware follow-ups.",
+    "story": "Group texts are rude and BCC doesn't exist in Messages. This searches your own history for everyone who, say, came to last year's party, lets you review the list with context, and sends each person their own message.",
+    "path": "imessage-campaigns/"
+  },
+  {
     "id": "whatsapp-campaigns",
     "name": "WhatsApp Campaign Studio",
     "slug": "whatsapp-campaigns",
@@ -1217,6 +1144,23 @@
     "path": "whatsapp-campaigns/"
   },
   {
+    "id": "backstage",
+    "name": "Backstage",
+    "slug": "backstage",
+    "icon": "🎛️",
+    "category": "mac-tool",
+    "tags": [
+      "mac-tool",
+      "launchd",
+      "swiftui",
+      "automation"
+    ],
+    "color": "linear-gradient(135deg, #111827, #6b7280)",
+    "summary": "A menu-bar command center for everything running in the background on your Mac: LaunchAgents, cron, your own scripts, with run history and one-click repairs.",
+    "story": "Backstage lists every background job, explains what it does, spots crash loops and missing scripts, and runs your scripts with live output and history.",
+    "path": "backstage/"
+  },
+  {
     "id": "cpu-guard",
     "name": "CPU Guard",
     "slug": "cpu-guard",
@@ -1232,6 +1176,23 @@
     "summary": "Stops known noisy macOS background processes after sustained high CPU, with quiet action-only notifications.",
     "story": "My computer should spend cycles on writing, calls, code, and research, not an invisible daemon melting the fan. This is a small guardrail for flow.",
     "path": "cpu-guard/cpu_guard.py"
+  },
+  {
+    "id": "git-privacy",
+    "name": "git-privacy",
+    "slug": "git-privacy",
+    "icon": "🔏",
+    "category": "mac-tool",
+    "tags": [
+      "mac-tool",
+      "git",
+      "privacy",
+      "icloud"
+    ],
+    "color": "linear-gradient(135deg, #1e293b, #22c55e)",
+    "summary": "Keep code on GitHub and personal notes on your Macs: anything git ignores stays in your iCloud-synced folders and is blocked from ever being pushed.",
+    "story": "If your repos live in iCloud Drive, private notes, contact lists and AI instructions sit right next to public code. git-privacy makes one rule enforceable on every Mac: ignored means private. A pre-push guard blocks leaks, scrub removes private files from not-yet-pushed commits, and audit finds corrupted repositories before they bite.",
+    "path": "git-privacy/"
   },
   {
     "id": "github-autopush",
@@ -1281,6 +1242,39 @@
     "summary": "A native-feeling little app to browse and launch everything in this collection from one window.",
     "story": "",
     "path": "mac-scripts-launcher/"
+  },
+  {
+    "id": "secrets-sweep",
+    "name": "Secrets Sweep",
+    "slug": "secrets-sweep",
+    "icon": "🔐",
+    "category": "mac-tool",
+    "tags": [
+      "mac-tool",
+      "security",
+      "secrets"
+    ],
+    "color": "linear-gradient(135deg, #7f1d1d, #f59e0b)",
+    "summary": "Audits a folder tree for API keys, tokens and credential files that drifted out of your vault, and can move them in.",
+    "story": "Keys end up in .env files, notes and old scripts. This finds them and moves them to one private vault with symlinks so nothing breaks.",
+    "path": "secrets-sweep/secrets-sweep.sh"
+  },
+  {
+    "id": "sunlight",
+    "name": "Sunlight",
+    "slug": "sunlight",
+    "icon": "☀️",
+    "category": "mac-tool",
+    "tags": [
+      "mac-tool",
+      "smart-home",
+      "swiftui",
+      "tasmota"
+    ],
+    "color": "linear-gradient(135deg, #f59e0b, #fde68a)",
+    "summary": "Native Mac controls for a Tasmota smart bulb: moods, slow color compositions, warm start-up, on-device daylight automation, and a Recipes tab that reads and rewrites the bulb's color schedule. Your bulb's details stay in a private local file.",
+    "story": "Smart-bulb apps want accounts and clouds. Sunlight talks straight to a Tasmota bulb on your Wi-Fi: twelve moods, slow compositions, a warm Edison start-up, a daylight program that runs on the bulb itself, and a Recipes tab that shows exactly which rules the bulb is running and lets you write your own.",
+    "path": "sunlight/"
   }
 ];
     const categories = [["all", "All"], ["ai", "AI"], ["web", "Web"], ["evidence", "Evidence"], ["mac-tool", "Mac Tools"], ["productivity", "Productivity"], ["storage", "Storage"], ["contacts", "Contacts"], ["migration", "Migration"]];

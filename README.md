@@ -31,12 +31,6 @@ If a tool looks useful but the steps feel intimidating, the easiest path is alwa
 ## 🆕 What's new
 
 - 🐍 **[Python Guard](./python-guard/)** (2026-10-17): Keeps Python working on your Mac through every Homebrew upgrade: installs the matching Tk, rebuilds tool environments for the new version, and heals itself the moment Homebrew changes Python.
-- 🎛️ **[Backstage](./backstage/)** (2026-09-24): A menu-bar command center for everything running in the background on your Mac: LaunchAgents, cron, your own scripts, with run history and one-click repairs.
-- 🔏 **[git-privacy](./git-privacy/)** (2026-09-24): Keep code on GitHub and personal notes on your Macs: anything git ignores stays in your iCloud-synced folders and is blocked from ever being pushed.
-- 📣 **[iMessage Campaign Studio](./imessage-campaigns/)** (2026-09-24): Find people by what you've talked about before, review each one, then send separate personal texts, with dry-run first and reply-aware follow-ups.
-- 🌙 **[iMessage Sync](./imessage-sync/)** (2026-09-24): Every night, your whole iMessage history becomes a folder people and AIs can read: Markdown per person and per day, a searchable database, and photos, videos and PDFs sorted and shrunk.
-- 🔐 **[Secrets Sweep](./secrets-sweep/)** (2026-09-24): Audits a folder tree for API keys, tokens and credential files that drifted out of your vault, and can move them in.
-- ☀️ **[Sunlight](./sunlight/)** (2026-09-24): Native Mac controls for a Tasmota smart bulb: moods, slow color compositions, warm start-up, on-device daylight automation, and a Recipes tab that reads and rewrites the bulb's color schedule. Your bulb's details stay in a private local file.
 
 ---
 
@@ -66,7 +60,7 @@ Keep every conversation, readable by you and your AIs, without Messages hoarding
 
 | Tool | What it does |
 |------|--------------|
-| 🌙 **[iMessage Sync](./imessage-sync/)** 🆕 | Every night, your whole iMessage history becomes a folder people and AIs can read: Markdown per person and per day, a searchable database, and photos, videos and PDFs sorted and shrunk. |
+| 🌙 **[iMessage Sync](./imessage-sync/)** | Every night, your whole iMessage history becomes a folder people and AIs can read: Markdown per person and per day, a searchable database, and photos, videos and PDFs sorted and shrunk. |
 | 💬 **[iMessage Cleanup](https://github.com/amolsarva/imessage-cleanup)** | Interactive exporter and iCloud storage cleaner: exports per-person archives (database, transcript, media) and frees space by removing local attachment copies. |
 
 ### Storage & cleanup
@@ -95,27 +89,27 @@ Careful one-by-one outreach. Dry-run first, every recipient reviewed. Separate f
 
 | Tool | What it does |
 |------|--------------|
-| 📣 **[iMessage Campaign Studio](./imessage-campaigns/)** 🆕 | Find people by what you've talked about before, review each one, then send separate personal texts, with dry-run first and reply-aware follow-ups. |
+| 📣 **[iMessage Campaign Studio](./imessage-campaigns/)** | Find people by what you've talked about before, review each one, then send separate personal texts, with dry-run first and reply-aware follow-ups. |
 | 🟢 **[WhatsApp Campaign Studio](./whatsapp-campaigns/)** | The same careful, one-by-one outreach for WhatsApp: search history, review context, simulate or send, and bump people who didn't reply. |
 
 ### Keeping the machine healthy
 
 | Tool | What it does |
 |------|--------------|
-| 🎛️ **[Backstage](./backstage/)** 🆕 | A menu-bar command center for everything running in the background on your Mac: LaunchAgents, cron, your own scripts, with run history and one-click repairs. |
+| 🎛️ **[Backstage](./backstage/)** | A menu-bar command center for everything running in the background on your Mac: LaunchAgents, cron, your own scripts, with run history and one-click repairs. |
 | 🔥 **[CPU Guard](./cpu-guard/)** | Stops known noisy macOS background processes after sustained high CPU, with quiet action-only notifications. |
-| 🔏 **[git-privacy](./git-privacy/)** 🆕 | Keep code on GitHub and personal notes on your Macs: anything git ignores stays in your iCloud-synced folders and is blocked from ever being pushed. |
+| 🔏 **[git-privacy](./git-privacy/)** | Keep code on GitHub and personal notes on your Macs: anything git ignores stays in your iCloud-synced folders and is blocked from ever being pushed. |
 | ↻ **[GitHub Autopush](./github-autopush/)** | Keeps local repos moving to GitHub with readable commits and a background LaunchAgent. |
 | 🖥️ **[Mac Migrator](./mac-migrator/)** | Bundles LaunchAgents, shell config, automation folders, brew lists, diagnostics, and restore steps. |
 | 🚀 **[Mac Scripts Launcher](./mac-scripts-launcher/)** | A native-feeling little app to browse and launch everything in this collection from one window. |
 | 🐍 **[Python Guard](./python-guard/)** 🆕 | Keeps Python working on your Mac through every Homebrew upgrade: installs the matching Tk, rebuilds tool environments for the new version, and heals itself the moment Homebrew changes Python. |
-| 🔐 **[Secrets Sweep](./secrets-sweep/)** 🆕 | Audits a folder tree for API keys, tokens and credential files that drifted out of your vault, and can move them in. |
+| 🔐 **[Secrets Sweep](./secrets-sweep/)** | Audits a folder tree for API keys, tokens and credential files that drifted out of your vault, and can move them in. |
 
 ### Home & gadgets
 
 | Tool | What it does |
 |------|--------------|
-| ☀️ **[Sunlight](./sunlight/)** 🆕 | Native Mac controls for a Tasmota smart bulb: moods, slow color compositions, warm start-up, on-device daylight automation, and a Recipes tab that reads and rewrites the bulb's color schedule. Your bulb's details stay in a private local file. |
+| ☀️ **[Sunlight](./sunlight/)** | Native Mac controls for a Tasmota smart bulb: moods, slow color compositions, warm start-up, on-device daylight automation, and a Recipes tab that reads and rewrites the bulb's color schedule. Your bulb's details stay in a private local file. |
 
 _29 tools · generated from each tool's `tool.json` by `supporting-files/publish/build_catalog.py`; edit those, not this table._
 <!-- catalog:end -->
