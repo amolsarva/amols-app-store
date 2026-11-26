@@ -195,6 +195,13 @@
     "long": "Finds private chats where a phrase appeared, lets you review each person and matching context, then simulates or sends a separate message to each. Archives campaigns, checks replies, and prepares bumps for people who did not respond. Dry-run is always the default.",
     "status": "public"
   },
+  "whatsapp-sync": {
+    "entry": "run.sh",
+    "icon": "💬",
+    "short": "Archive WhatsApp for people and AIs",
+    "long": "Plan A reads WhatsApp for Mac's database; Plan B the full history from an iPhone backup (encrypted too); Plan C links as a read-only desktop device and captures the history sync; Plan D imports Export Chat files. One never-forget archive: Markdown per person per month and per day, media by type, SQLite with full-text search. Works on several Macs (drops merged by the primary).",
+    "status": "review"
+  },
   "opensore": {
     "entry": "run.sh",
     "icon": "🕵️",

@@ -135,7 +135,7 @@ Apple's `/usr/bin/python3` is 3.9: keep code 3.9-compatible (no 3.12-only f-stri
 
 ## Messages tools are split on purpose
 
-`imessage-sync` (nightly archive) and `imessage-cleanup` (interactive exporter, own repo) are *backup*;
+`imessage-sync` (nightly archive), `whatsapp-sync` (WhatsApp archive) and `imessage-cleanup` (interactive exporter, own repo) are *backup*;
 `imessage-campaigns` and `whatsapp-campaigns` are *outreach*. Keep them apart in names, READMEs, store.
 
 ## Known housekeeping
